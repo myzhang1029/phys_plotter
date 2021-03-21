@@ -179,6 +179,34 @@ impl TwoVarDataSet {
         sum / self.len() as f64
     }
 
+    /// Get all x values as a vector
+    pub fn get_x_value(&self) -> Vec<f64> {
+        self.iter().map(|item|
+            item.x_value
+        ).collect()
+    }
+
+    /// Get all x uncertainties as a vector
+    pub fn get_x_uncertainty(&self) -> Vec<f64> {
+        self.iter().map(|item|
+            item.x_uncertainty
+        ).collect()
+    }
+
+    /// Get all y values as a vector
+    pub fn get_y_value(&self) -> Vec<f64> {
+        self.iter().map(|item|
+            item.y_value
+        ).collect()
+    }
+
+    /// Get all y uncertainties as a vector
+    pub fn get_y_uncertainty(&self) -> Vec<f64> {
+        self.iter().map(|item|
+            item.y_uncertainty
+        ).collect()
+    }
+
     /// Get the maximum x value
     pub fn max_x(&self) -> f64 {
         self.iter()
@@ -211,6 +239,7 @@ impl TwoVarDataSet {
             .y_value
     }
 
+    /// Get line of best fit
     pub fn line_best_fit(&self) -> Line {
         let ax = self.mean_x();
         let ay = self.mean_y();

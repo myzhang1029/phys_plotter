@@ -56,7 +56,6 @@ impl Line {
 
     /// y value of the x
     pub fn y(&self, x: f64) -> f64 {
-        println!("{:?}", (x, self.gradient, self.y_intercept));
         self.gradient * x + self.y_intercept
     }
 }
@@ -80,7 +79,6 @@ impl TwoVarDataPoint {
         let mut mut_line = line.clone();
         // Exhaust this line by taking all numeric fields
         while let Some((number, (_, end_point))) = atof(mut_line) {
-            // println!("{:?}", line)
             fields.push(number);
             mut_line = &mut_line[end_point..];
             // break when no data can be processed anymore
@@ -302,7 +300,6 @@ impl TwoVarDataSet {
     // Get the minimum gradient line
     pub fn line_min_grad(&self) -> Line {
         let lns = self.lines();
-        println!("{:?}", lns);
         *lns.iter().min_by(|one, another|
             one.gradient.partial_cmp(&another.gradient).unwrap()
         ).unwrap()
@@ -327,7 +324,6 @@ fn atof(string: &str) -> Option<(f64, (usize, usize))> {
     let mut endpoint: usize = string.len();
     // Go over every character
     for (idx, chr) in string.chars().enumerate() {
-        // println!("Found {:?}", char)
         // Found a digit
         if chr.is_digit(10) {
             if startpoint == None {
@@ -344,7 +340,6 @@ fn atof(string: &str) -> Option<(f64, (usize, usize))> {
                 fracdig += 1;
             }
         } else {
-            // println!("Skipping")
             if chr == '.' && fracpart == false {
                 // Start of decimal point
                 fracpart = true;

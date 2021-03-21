@@ -19,15 +19,24 @@
 
 use crate::two_var_data::TwoVarDataSet;
 use gnuplot::{
-    AlignCenter, AlignLeft, AlignRight, AxesCommon, Bottom, Caption, Figure, Auto, Graph,
-    Left, LineWidth, Mirror, Placement, TextAlign, LineStyle, Dash, Color, PointSymbol
+    Auto, AxesCommon, Bottom, Caption, Color, Dash, Figure, Graph, Left, LineStyle, LineWidth,
+    Mirror, PointSymbol,
 };
 
 pub fn plot(title: &str, x_label: &str, y_label: &str, data: TwoVarDataSet) {
     let ln_plt_x = Vec::from([data.min_x(), data.max_x()]);
-    let y_best: Vec<f64> = ln_plt_x.iter().map(|x| data.line_best_fit().y(*x)).collect();
-    let y_min: Vec<f64> = ln_plt_x.iter().map(|x| data.line_min_grad().y(*x)).collect();
-    let y_max: Vec<f64> = ln_plt_x.iter().map(|x| data.line_max_grad().y(*x)).collect();
+    let y_best: Vec<f64> = ln_plt_x
+        .iter()
+        .map(|x| data.line_best_fit().y(*x))
+        .collect();
+    let y_min: Vec<f64> = ln_plt_x
+        .iter()
+        .map(|x| data.line_min_grad().y(*x))
+        .collect();
+    let y_max: Vec<f64> = ln_plt_x
+        .iter()
+        .map(|x| data.line_max_grad().y(*x))
+        .collect();
     let x_values = data.get_x_value();
     let y_values = data.get_y_value();
     let mut fg = Figure::new();
@@ -40,30 +49,22 @@ pub fn plot(title: &str, x_label: &str, y_label: &str, data: TwoVarDataSet) {
         .set_y_ticks(Some((Auto, 1)), &[Mirror(false)], &[])
         .set_border(true, &[Left, Bottom], &[LineWidth(2.0)])
         // Scatter points "Real data"
-		.points(
-			&x_values,
-			&y_values,
-			&[Color("blue"), PointSymbol('x')],
-		)
+        .points(&x_values, &y_values, &[Color("blue"), PointSymbol('x')])
         // Plot error bars
         .x_error_bars(
-			&x_values,
+            &x_values,
             &y_values,
-			&data.get_x_uncertainty(),
-			&[LineWidth(0.9), Color("blue"), PointSymbol('.')],
-		)
-        .y_error_bars(
-			&x_values,
-            &y_values,
-			&data.get_y_uncertainty(),
-			&[LineWidth(0.9), Color("blue"), PointSymbol('.')],
-		)
-        // Three required lines
-        .lines(
-            &ln_plt_x,
-            &y_best,
-            &[Caption("Best-fit Line")],
+            &data.get_x_uncertainty(),
+            &[LineWidth(0.9), Color("blue"), PointSymbol('.')],
         )
+        .y_error_bars(
+            &x_values,
+            &y_values,
+            &data.get_y_uncertainty(),
+            &[LineWidth(0.9), Color("blue"), PointSymbol('.')],
+        )
+        // Three required lines
+        .lines(&ln_plt_x, &y_best, &[Caption("Best-fit Line")])
         .lines(
             &ln_plt_x,
             &y_min,
@@ -75,5 +76,5 @@ pub fn plot(title: &str, x_label: &str, y_label: &str, data: TwoVarDataSet) {
             &[Caption("Maximum Gradient"), LineStyle(Dash), LineWidth(0.7)],
         )
         .set_legend(Graph(1.0), Graph(0.7), &[], &[]);
-    fg.show();
+    fg.show().unwrap();
 }

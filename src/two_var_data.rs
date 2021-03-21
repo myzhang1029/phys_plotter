@@ -181,30 +181,22 @@ impl TwoVarDataSet {
 
     /// Get all x values as a vector
     pub fn get_x_value(&self) -> Vec<f64> {
-        self.iter().map(|item|
-            item.x_value
-        ).collect()
+        self.iter().map(|item| item.x_value).collect()
     }
 
     /// Get all x uncertainties as a vector
     pub fn get_x_uncertainty(&self) -> Vec<f64> {
-        self.iter().map(|item|
-            item.x_uncertainty
-        ).collect()
+        self.iter().map(|item| item.x_uncertainty).collect()
     }
 
     /// Get all y values as a vector
     pub fn get_y_value(&self) -> Vec<f64> {
-        self.iter().map(|item|
-            item.y_value
-        ).collect()
+        self.iter().map(|item| item.y_value).collect()
     }
 
     /// Get all y uncertainties as a vector
     pub fn get_y_uncertainty(&self) -> Vec<f64> {
-        self.iter().map(|item|
-            item.y_uncertainty
-        ).collect()
+        self.iter().map(|item| item.y_uncertainty).collect()
     }
 
     /// Get the maximum x value
@@ -321,17 +313,17 @@ impl TwoVarDataSet {
     /// Get the maximum gradient line
     pub fn line_max_grad(&self) -> Line {
         let lns = self.lines();
-        *lns.iter().max_by(|one, another|
-            one.gradient.partial_cmp(&another.gradient).unwrap()
-        ).unwrap()
+        *lns.iter()
+            .max_by(|one, another| one.gradient.partial_cmp(&another.gradient).unwrap())
+            .unwrap()
     }
 
     // Get the minimum gradient line
     pub fn line_min_grad(&self) -> Line {
         let lns = self.lines();
-        *lns.iter().min_by(|one, another|
-            one.gradient.partial_cmp(&another.gradient).unwrap()
-        ).unwrap()
+        *lns.iter()
+            .min_by(|one, another| one.gradient.partial_cmp(&another.gradient).unwrap())
+            .unwrap()
     }
 }
 

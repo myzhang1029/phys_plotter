@@ -17,29 +17,53 @@
 //  along with sib secure shell.  If not, see <https://www.gnu.org/licenses/>.
 //
 
+extern crate clap;
 extern crate gnuplot;
 
 mod plot;
 mod two_var_data;
 
-use std::env;
+use clap::{App, Arg};
 use std::process::exit;
 
 fn main() {
-    let arguments: Vec<String> = env::args().collect();
-    if arguments.len() <= 1 {
-        eprintln!("Usage: {} <dataset_file>", arguments[0]);
-        exit(1);
-    }
-    let dataset = two_var_data::TwoVarDataSet::from_file(&arguments[1], 0.01, 0.01);
+    let matches = App::new("Physics Plotter")
+        .version("0.1")
+        .author("Zhang Maiyun <myzhang1029@hotmail.com>")
+        .about("Plot physics two-variable observation data with best-fit lines, max,min-gradient lines, and error bars.")
+        .arg(Arg::with_name("DATASET_FILE")
+            .help("Sets the data file to parse")
+            .required(true)
+            .index(1))
+        .arg(Arg::with_name("title")
+            .short("t")
+            .long("config")
+            .value_name("TITLE")
+            .help("Sets the title of the plot"))
+        .arg(Arg::with_name("x_label")
+            .short("x")
+            .long("x-label")
+            .value_name("X_LABEL")
+            .help("Sets the x axis label"))
+        .arg(Arg::with_name("y_label")
+            .short("y")
+            .long("y-label")
+            .value_name("Y_LABEL")
+            .help("Sets the y axis label"))
+        .get_matches();
+    let dataset = two_var_data::TwoVarDataSet::from_file(
+        &matches.value_of("DATASET_FILE").unwrap(),
+        0.01,
+        0.01,
+    );
     if let Err(error) = dataset {
         eprintln!("Error: {}", error);
         exit(2);
     }
     plot::plot(
-        "Atmospheric Pressure and Height",
-        "Relative Height/m",
-        "Atmospheric Pressure/Pa",
+        matches.value_of("title").unwrap_or("Some Plot"),
+        matches.value_of("x_label").unwrap_or("x"),
+        matches.value_of("y_label").unwrap_or("y"),
         dataset.unwrap(),
     );
 }

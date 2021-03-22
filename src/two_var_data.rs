@@ -95,7 +95,7 @@ impl TwoVarDataPoint {
     /// duy: Default y uncertainty
     pub fn from_line(line: &str, dux: f64, duy: f64) -> Result<Self, ParseError> {
         let mut fields: Vec<f64> = Vec::with_capacity(4);
-        let mut mut_line = line.clone();
+        let mut mut_line = line;
         // Exhaust this line by taking all numeric fields
         while let Some((number, (_, end_point))) = atof(mut_line) {
             fields.push(number);
@@ -379,15 +379,13 @@ fn atof(string: &str) -> Option<(f64, (usize, usize))> {
             if fracpart {
                 fracdig += 1;
             }
-        } else {
-            if chr == '.' && fracpart == false {
-                // Start of decimal point
-                fracpart = true;
-            } else if startpoint != None {
-                // Processing has started, now end it
-                endpoint = idx;
-                break;
-            }
+        } else if chr == '.' && !fracpart {
+            // Start of decimal point
+            fracpart = true;
+        } else if startpoint != None {
+            // Processing has started, now end it
+            endpoint = idx;
+            break;
         }
     }
     if startpoint == None {

@@ -91,5 +91,5 @@ fn main() {
         matches.value_of("x_label").unwrap(),
         matches.value_of("y_label").unwrap(),
         dataset.unwrap(),
-    );
+    ).unwrap();
 }

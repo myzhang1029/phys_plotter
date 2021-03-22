@@ -18,9 +18,124 @@
 //
 
 use crate::two_var_data::TwoVarDataSet;
-use gnuplot::{Auto, AxesCommon, Caption, Color, Dash, Figure, Font, Graph, LineStyle, LineWidth};
+use plotters::prelude::*;
+use plotters::style::RGBColor;
 
-pub fn plot(title: &str, x_label: &str, y_label: &str, data: TwoVarDataSet) {
+macro_rules! line_best_fit_style {
+    () => {
+        ShapeStyle {
+            color: RGBColor(238, 119, 51).to_rgba(),
+            filled: true,
+            stroke_width: 2,
+        }
+    };
+}
+
+macro_rules! line_min_grad_style {
+    () => {
+        ShapeStyle {
+            color: RGBColor(0, 153, 136).to_rgba(),
+            filled: true,
+            stroke_width: 1,
+        }
+    };
+}
+
+macro_rules! line_max_grad_style {
+    () => {
+        ShapeStyle {
+            color: RGBColor(0, 119, 187).to_rgba(),
+            filled: true,
+            stroke_width: 1,
+        }
+    };
+}
+
+pub fn plot(
+    title: &str,
+    x_label: &str,
+    y_label: &str,
+    data: TwoVarDataSet,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Extra length before min and after max, XXX: Add uncertainty
+    let extrax = (data.max_x() - data.min_x()) * 0.1;
+    let extray = (data.max_y() - data.min_y()) * 0.1;
+    // Axis ranges
+    let axis_x = (data.min_x() - extrax)..(data.max_x() + extrax);
+    let axis_y = (data.min_y() - extray)..(data.max_y() + extray);
+    // Points for plotting the lines
+    let plot_x = Vec::from([data.min_x() - extrax, data.max_x() + extrax]);
+    // Create drawing area
+    let root_drawing_area = SVGBackend::new("test.svg", (1920, 1080)).into_drawing_area();
+    root_drawing_area.fill(&WHITE).unwrap();
+    let mut ctx = ChartBuilder::on(&root_drawing_area)
+        .margin(5)
+        .caption(title, ("Times", 22))
+        .set_label_area_size(
+            LabelAreaPosition::Left,
+            (16.0 * data.max_y().log10()) as u32,
+        )
+        .set_label_area_size(LabelAreaPosition::Bottom, 40)
+        .build_cartesian_2d(axis_x, axis_y)?;
+    ctx.configure_mesh()
+        .disable_mesh()
+        .x_desc(x_label)
+        .y_desc(y_label)
+        .axis_desc_style(("Times", 13))
+        .draw()?;
+    // Three lines
+    let line_best_fit = data.line_best_fit();
+    let line_min_grad = data.line_min_grad();
+    let line_max_grad = data.line_max_grad();
+    ctx.draw_series(LineSeries::new(
+        plot_x.iter().map(|x| (*x, line_best_fit.y(*x))),
+        line_best_fit_style!(),
+    ))?
+    .label(format!("Best fit {}", line_best_fit).as_str())
+    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], line_best_fit_style!()));
+    ctx.draw_series(LineSeries::new(
+        plot_x.iter().map(|x| (*x, line_min_grad.y(*x))),
+        line_min_grad_style!(),
+    ))?
+    .label(format!("Minimum gradient {}", line_min_grad).as_str())
+    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], line_min_grad_style!()));
+    ctx.draw_series(LineSeries::new(
+        plot_x.iter().map(|x| (*x, line_min_grad.y(*x))),
+        line_max_grad_style!(),
+    ))?
+    .label(format!("Maximum gradient {}", line_max_grad).as_str())
+    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], line_max_grad_style!()));
+    // Scatter series and uncertainties
+    /*ctx.draw_series(
+        data.iter().map(|point|
+            Circle::new((point.x_value, point.y_value), 5, &BLUE)
+        ),
+    )?;*/
+    ctx.draw_series(data.iter().map(|point| {
+        ErrorBar::new_vertical(
+            point.x_value,
+            point.y_value - point.y_uncertainty,
+            point.y_value,
+            point.y_value + point.y_uncertainty,
+            &BLUE,
+            10,
+        )
+    }))?;
+    ctx.draw_series(data.iter().map(|point| {
+        ErrorBar::new_horizontal(
+            point.y_value,
+            point.x_value - point.x_uncertainty,
+            point.x_value,
+            point.x_value + point.x_uncertainty,
+            &BLUE,
+            10,
+        )
+    }))?;
+    ctx.configure_series_labels().border_style(&BLACK).draw()?;
+    Ok(())
+}
+/*
+pub fn plot2(title: &str, x_label: &str, y_label: &str, data: TwoVarDataSet) {
     // Extra length before min and after max
     let extra = (data.max_x() - data.min_x()) * 0.1;
     // Two points for plotting the lines
@@ -89,4 +204,4 @@ pub fn plot(title: &str, x_label: &str, y_label: &str, data: TwoVarDataSet) {
         )
         .set_legend(Graph(0.99), Graph(0.95), &[], &[Font("Times", 13.0)]);
     fg.show().unwrap();
-}
+}*/

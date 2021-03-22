@@ -18,10 +18,7 @@
 //
 
 use crate::two_var_data::TwoVarDataSet;
-use gnuplot::{
-    Auto, AxesCommon, Caption, Color, Dash, Figure, Font, Graph, LineStyle, LineWidth, Mirror,
-    PointSymbol,
-};
+use gnuplot::{Auto, AxesCommon, Caption, Color, Dash, Figure, Font, Graph, LineStyle, LineWidth};
 
 pub fn plot(title: &str, x_label: &str, y_label: &str, data: TwoVarDataSet) {
     // Extra length before min and after max
@@ -39,52 +36,57 @@ pub fn plot(title: &str, x_label: &str, y_label: &str, data: TwoVarDataSet) {
     let y_values = data.get_y_value();
     let mut fg = Figure::new();
     fg.axes2d()
-        .set_title(title, &[Font("Arial", 20.0)])
-        .set_x_label(x_label, &[])
-        .set_y_label(y_label, &[])
+        .set_title(title, &[Font("Times", 22.0)])
+        .set_x_label(x_label, &[Font("Times", 13.0)])
+        .set_y_label(y_label, &[Font("Times", 13.0)])
         // Automatically generate ticks
-        .set_x_ticks(Some((Auto, 1)), &[Mirror(false)], &[])
-        .set_y_ticks(Some((Auto, 1)), &[Mirror(false)], &[])
-        //.set_border(true, &[Left, Bottom], &[LineWidth(2.0)])
+        .set_x_ticks(Some((Auto, 1)), &[], &[Font("Times", 13.0)])
+        .set_y_ticks(Some((Auto, 1)), &[], &[Font("Times", 13.0)])
         // Scatter points "Real data"
-        .points(&x_values, &y_values, &[Color("blue"), PointSymbol('x')])
+        //.points(&x_values, &y_values, &[Color("#4477AA"), PointSymbol('.')])
         // Plot error bars
         .x_error_bars(
             &x_values,
             &y_values,
             &data.get_x_uncertainty(),
-            &[LineWidth(0.9), Color("blue"), PointSymbol('.')],
+            &[LineWidth(1.5), Color("#4477AA")],
         )
         .y_error_bars(
             &x_values,
             &y_values,
             &data.get_y_uncertainty(),
-            &[LineWidth(0.9), Color("blue"), PointSymbol('.')],
+            &[LineWidth(1.5), Color("#4477AA")],
         )
         // Three required lines
         .lines(
             &ln_plt_x,
             &y_best,
-            &[Caption(format!("Best-fit Line {}", line_best_fit).as_str())],
+            &[
+                Caption(format!("Best fit {}", line_best_fit).as_str()),
+                LineWidth(2.0),
+                Color("#EE7733"),
+            ],
         )
         .lines(
             &ln_plt_x,
             &y_min,
             &[
-                Caption(format!("Minimum Gradient {}", line_min_grad).as_str()),
+                Caption(format!("Minimum gradient {}", line_min_grad).as_str()),
                 LineStyle(Dash),
-                LineWidth(0.7),
+                LineWidth(1.5),
+                Color("#009988"),
             ],
         )
         .lines(
             &ln_plt_x,
             &y_max,
             &[
-                Caption(format!("Maximum Gradient {}", line_max_grad).as_str()),
+                Caption(format!("Maximum gradient {}", line_max_grad).as_str()),
                 LineStyle(Dash),
-                LineWidth(0.7),
+                LineWidth(1.5),
+                Color("#0077BB"),
             ],
         )
-        .set_legend(Graph(1.0), Graph(1.0), &[], &[]);
+        .set_legend(Graph(0.99), Graph(0.95), &[], &[Font("Times", 13.0)]);
     fg.show().unwrap();
 }

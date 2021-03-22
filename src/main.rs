@@ -27,6 +27,14 @@ mod two_var_data;
 use clap::{App, Arg};
 use std::process::exit;
 
+/// Validator for uncertainties
+fn du_validator(num: String) -> Result<(), String> {
+    match num.parse::<f64>() {
+        Ok(_) => Ok(()),
+        Err(error) => Err(format!("{}", error)),
+    }
+}
+
 fn main() {
     let matches = App::new("Physics Plotter")
         .version("0.1")
@@ -40,31 +48,48 @@ fn main() {
             .short("t")
             .long("config")
             .value_name("TITLE")
+            .default_value("Some Title")
             .help("Sets the title of the plot"))
         .arg(Arg::with_name("x_label")
             .short("x")
             .long("x-label")
             .value_name("X_LABEL")
+            .default_value("x")
             .help("Sets the x axis label"))
         .arg(Arg::with_name("y_label")
             .short("y")
             .long("y-label")
             .value_name("Y_LABEL")
+            .default_value("y")
             .help("Sets the y axis label"))
+        .arg(Arg::with_name("dux")
+            .short("X")
+            .long("default-ux")
+            .value_name("DEFAULT_X_UNCERTAINTY")
+            .default_value("0.01")
+            .validator(du_validator)
+            .help("Sets a default value for x uncertainty"))
+        .arg(Arg::with_name("duy")
+            .short("Y")
+            .long("default-uy")
+            .value_name("DEFAULT_Y_UNCERTAINTY")
+            .validator(du_validator)
+            .default_value("0.01")
+            .help("Sets a default value for y uncertainty"))
         .get_matches();
     let dataset = two_var_data::TwoVarDataSet::from_file(
         &matches.value_of("DATASET_FILE").unwrap(),
-        0.01,
-        0.01,
+        matches.value_of("dux").unwrap().parse().unwrap(),
+        matches.value_of("dux").unwrap().parse().unwrap(),
     );
     if let Err(error) = dataset {
         eprintln!("Error: {}", error);
         exit(2);
     }
     plot::plot(
-        matches.value_of("title").unwrap_or("Some Plot"),
-        matches.value_of("x_label").unwrap_or("x"),
-        matches.value_of("y_label").unwrap_or("y"),
+        matches.value_of("title").unwrap(),
+        matches.value_of("x_label").unwrap(),
+        matches.value_of("y_label").unwrap(),
         dataset.unwrap(),
     );
 }

@@ -16,6 +16,8 @@
 //  You should have received a copy of the GNU General Public License
 //  along with physics plotter.  If not, see <https://www.gnu.org/licenses/>.
 //
+
+use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{Error, ErrorKind};
@@ -57,6 +59,23 @@ impl Line {
     /// y value of the x
     pub fn y(&self, x: f64) -> f64 {
         self.gradient * x + self.y_intercept
+    }
+}
+
+impl fmt::Display for Line {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Decimal precision in usize
+        let precision = f.precision().unwrap_or(6_usize);
+        // Minimum shown resolution
+        let epsilon = 10.0_f64.powi(-(precision as i32));
+        let y_intercept = if self.y_intercept >= epsilon {
+            format!("+{:.*}", precision, self.y_intercept)
+        } else if self.y_intercept <= -epsilon {
+            format!("{:.*}", precision, self.y_intercept)
+        } else {
+            String::from("")
+        };
+        write!(f, "y = {:.*}x{}", precision, self.gradient, y_intercept)
     }
 }
 

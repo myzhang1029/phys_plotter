@@ -19,24 +19,18 @@
 
 use crate::two_var_data::TwoVarDataSet;
 use gnuplot::{
-    Auto, AxesCommon, Bottom, Caption, Color, Dash, Figure, Graph, Left, LineStyle, LineWidth,
-    Mirror, PointSymbol,
+    Auto, AxesCommon, Caption, Color, Dash, Figure, Graph, LineStyle, LineWidth, Mirror,
+    PointSymbol,
 };
 
 pub fn plot(title: &str, x_label: &str, y_label: &str, data: TwoVarDataSet) {
     let ln_plt_x = Vec::from([data.min_x(), data.max_x()]);
-    let y_best: Vec<f64> = ln_plt_x
-        .iter()
-        .map(|x| data.line_best_fit().y(*x))
-        .collect();
-    let y_min: Vec<f64> = ln_plt_x
-        .iter()
-        .map(|x| data.line_min_grad().y(*x))
-        .collect();
-    let y_max: Vec<f64> = ln_plt_x
-        .iter()
-        .map(|x| data.line_max_grad().y(*x))
-        .collect();
+    let line_best_fit = data.line_best_fit();
+    let line_min_grad = data.line_min_grad();
+    let line_max_grad = data.line_max_grad();
+    let y_best: Vec<f64> = ln_plt_x.iter().map(|x| line_best_fit.y(*x)).collect();
+    let y_min: Vec<f64> = ln_plt_x.iter().map(|x| line_min_grad.y(*x)).collect();
+    let y_max: Vec<f64> = ln_plt_x.iter().map(|x| line_max_grad.y(*x)).collect();
     let x_values = data.get_x_value();
     let y_values = data.get_y_value();
     let mut fg = Figure::new();
@@ -47,7 +41,7 @@ pub fn plot(title: &str, x_label: &str, y_label: &str, data: TwoVarDataSet) {
         // Automatically generate ticks
         .set_x_ticks(Some((Auto, 1)), &[Mirror(false)], &[])
         .set_y_ticks(Some((Auto, 1)), &[Mirror(false)], &[])
-        .set_border(true, &[Left, Bottom], &[LineWidth(2.0)])
+        //.set_border(true, &[Left, Bottom], &[LineWidth(2.0)])
         // Scatter points "Real data"
         .points(&x_values, &y_values, &[Color("blue"), PointSymbol('x')])
         // Plot error bars
@@ -64,17 +58,29 @@ pub fn plot(title: &str, x_label: &str, y_label: &str, data: TwoVarDataSet) {
             &[LineWidth(0.9), Color("blue"), PointSymbol('.')],
         )
         // Three required lines
-        .lines(&ln_plt_x, &y_best, &[Caption("Best-fit Line")])
+        .lines(
+            &ln_plt_x,
+            &y_best,
+            &[Caption(format!("Best-fit Line {}", line_best_fit).as_str())],
+        )
         .lines(
             &ln_plt_x,
             &y_min,
-            &[Caption("Minimum Gradient"), LineStyle(Dash), LineWidth(0.7)],
+            &[
+                Caption(format!("Minimum Gradient {}", line_min_grad).as_str()),
+                LineStyle(Dash),
+                LineWidth(0.7),
+            ],
         )
         .lines(
             &ln_plt_x,
             &y_max,
-            &[Caption("Maximum Gradient"), LineStyle(Dash), LineWidth(0.7)],
+            &[
+                Caption(format!("Maximum Gradient {}", line_max_grad).as_str()),
+                LineStyle(Dash),
+                LineWidth(0.7),
+            ],
         )
-        .set_legend(Graph(1.0), Graph(0.7), &[], &[]);
+        .set_legend(Graph(1.0), Graph(1.0), &[], &[]);
     fg.show().unwrap();
 }

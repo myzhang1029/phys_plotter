@@ -20,6 +20,7 @@
 extern crate clap;
 extern crate gnuplot;
 
+mod linear_data;
 mod plot;
 mod two_var_data;
 

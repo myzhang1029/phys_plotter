@@ -17,7 +17,7 @@
 //  along with physics plotter.  If not, see <https://www.gnu.org/licenses/>.
 //
 
-use std::fmt;
+use crate::linear_data::{Line, Point};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{Error, ErrorKind};
@@ -28,55 +28,6 @@ use std::slice::Iter;
 pub enum ParseError {
     EmptyField,
     BadFields,
-}
-
-/// Struct representing a simple point
-#[derive(Debug, Default, Copy, Clone)]
-pub struct Point {
-    pub x: f64,
-    pub y: f64,
-}
-
-/// Struct representing a straight line
-#[derive(Debug, Default, Copy, Clone)]
-pub struct Line {
-    pub gradient: f64,
-    pub y_intercept: f64,
-}
-
-impl Line {
-    /// Construct a line from two points
-    pub fn from_points(first: Point, last: Point) -> Self {
-        let dx = last.x - first.x;
-        let dy = last.y - first.y;
-        let b = dy / dx;
-        Line {
-            gradient: b,
-            y_intercept: last.y - b * last.x,
-        }
-    }
-
-    /// y value of the x
-    pub fn y(&self, x: f64) -> f64 {
-        self.gradient * x + self.y_intercept
-    }
-}
-
-impl fmt::Display for Line {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Decimal precision in usize
-        let precision = f.precision().unwrap_or(6_usize);
-        // Minimum shown resolution
-        let epsilon = 10.0_f64.powi(-(precision as i32));
-        let y_intercept = if self.y_intercept >= epsilon {
-            format!("+{:.*}", precision, self.y_intercept)
-        } else if self.y_intercept <= -epsilon {
-            format!("{:.*}", precision, self.y_intercept)
-        } else {
-            String::from("")
-        };
-        write!(f, "y = {:.*}x{}", precision, self.gradient, y_intercept)
-    }
 }
 
 /// Struct representing a two-variable data and the uncertainties
@@ -95,11 +46,11 @@ impl TwoVarDataPoint {
     /// duy: Default y uncertainty
     pub fn from_line(line: &str, dux: f64, duy: f64) -> Result<Self, ParseError> {
         let mut fields: Vec<f64> = Vec::with_capacity(4);
-        let mut mut_line = line;
+        let mut line = line;
         // Exhaust this line by taking all numeric fields
-        while let Some((number, (_, end_point))) = atof(mut_line) {
+        while let Some((number, (_, end_point))) = atof(line) {
             fields.push(number);
-            mut_line = &mut_line[end_point..];
+            line = &line[end_point..];
             // break when no data can be processed anymore
         }
         // Append to the object
@@ -260,7 +211,7 @@ impl TwoVarDataSet {
             let x = data.x_value;
             let y = data.y_value;
             numerator += (x - ax) * (y - ay);
-            denominator += (x - ax).powf(2.0);
+            denominator += (x - ax).powi(2);
         }
         let b = numerator / denominator;
         let a = ay - b * ax;

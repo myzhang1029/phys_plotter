@@ -18,6 +18,10 @@
 //
 
 use crate::two_var_data::TwoVarDataSet;
+use gnuplot::Color as GnuPlotColor;
+use gnuplot::{
+    Auto, AxesCommon, Caption, Dash, Figure, Font, GnuplotInitError, Graph, LineStyle, LineWidth,
+};
 use plotters::prelude::*;
 use plotters::style::RGBColor;
 
@@ -51,29 +55,29 @@ macro_rules! line_max_grad_style {
     };
 }
 
-pub fn plot(
+pub fn plot_plotters(
     title: &str,
     x_label: &str,
     y_label: &str,
     data: TwoVarDataSet,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Extra length before min and after max, XXX: Add uncertainty
-    let extrax = (data.max_x() - data.min_x()) * 0.1;
-    let extray = (data.max_y() - data.min_y()) * 0.1;
+    // Extra length before min and after max
+    let extrax = (data.max_x(false) - data.min_x(false)) * 0.1;
+    let extray = (data.max_y(false) - data.min_y(false)) * 0.1;
     // Axis ranges
-    let axis_x = (data.min_x() - extrax)..(data.max_x() + extrax);
-    let axis_y = (data.min_y() - extray)..(data.max_y() + extray);
+    let axis_x = (data.min_x(true) - extrax)..(data.max_x(true) + extrax);
+    let axis_y = (data.min_y(true) - extray)..(data.max_y(true) + extray);
     // Points for plotting the lines
-    let plot_x = Vec::from([data.min_x() - extrax, data.max_x() + extrax]);
+    let plot_x = Vec::from([data.min_x(true) - extrax, data.max_x(true) + extrax]);
     // Create drawing area
-    let root_drawing_area = SVGBackend::new("test.svg", (1920, 1080)).into_drawing_area();
-    root_drawing_area.fill(&WHITE).unwrap();
+    let root_drawing_area = BitMapBackend::new("test.png", (1920, 1080)).into_drawing_area();
+    root_drawing_area.fill(&WHITE)?;
     let mut ctx = ChartBuilder::on(&root_drawing_area)
         .margin(5)
         .caption(title, ("Times", 22))
         .set_label_area_size(
             LabelAreaPosition::Left,
-            (16.0 * data.max_y().log10()) as u32,
+            (16.0 * data.max_y(false).log10()) as u32,
         )
         .set_label_area_size(LabelAreaPosition::Bottom, 40)
         .build_cartesian_2d(axis_x, axis_y)?;
@@ -134,12 +138,17 @@ pub fn plot(
     ctx.configure_series_labels().border_style(&BLACK).draw()?;
     Ok(())
 }
-/*
-pub fn plot2(title: &str, x_label: &str, y_label: &str, data: TwoVarDataSet) {
+
+pub fn plot_gnuplot(
+    title: &str,
+    x_label: &str,
+    y_label: &str,
+    data: TwoVarDataSet,
+) -> Result<(), GnuplotInitError> {
     // Extra length before min and after max
-    let extra = (data.max_x() - data.min_x()) * 0.1;
+    let extra = (data.max_x(false) - data.min_x(false)) * 0.1;
     // Two points for plotting the lines
-    let ln_plt_x = Vec::from([data.min_x() - extra, data.max_x() + extra]);
+    let ln_plt_x = Vec::from([data.min_x(true) - extra, data.max_x(true) + extra]);
     // Three lines
     let line_best_fit = data.line_best_fit();
     let line_min_grad = data.line_min_grad();
@@ -158,19 +167,19 @@ pub fn plot2(title: &str, x_label: &str, y_label: &str, data: TwoVarDataSet) {
         .set_x_ticks(Some((Auto, 1)), &[], &[Font("Times", 13.0)])
         .set_y_ticks(Some((Auto, 1)), &[], &[Font("Times", 13.0)])
         // Scatter points "Real data"
-        //.points(&x_values, &y_values, &[Color("#4477AA"), PointSymbol('.')])
+        //.points(&x_values, &y_values, &[GnuPlotColor("#4477AA"), PointSymbol('.')])
         // Plot error bars
         .x_error_bars(
             &x_values,
             &y_values,
             &data.get_x_uncertainty(),
-            &[LineWidth(1.5), Color("#4477AA")],
+            &[LineWidth(1.5), GnuPlotColor("#4477AA")],
         )
         .y_error_bars(
             &x_values,
             &y_values,
             &data.get_y_uncertainty(),
-            &[LineWidth(1.5), Color("#4477AA")],
+            &[LineWidth(1.5), GnuPlotColor("#4477AA")],
         )
         // Three required lines
         .lines(
@@ -179,7 +188,7 @@ pub fn plot2(title: &str, x_label: &str, y_label: &str, data: TwoVarDataSet) {
             &[
                 Caption(format!("Best fit {}", line_best_fit).as_str()),
                 LineWidth(2.0),
-                Color("#EE7733"),
+                GnuPlotColor("#EE7733"),
             ],
         )
         .lines(
@@ -189,7 +198,7 @@ pub fn plot2(title: &str, x_label: &str, y_label: &str, data: TwoVarDataSet) {
                 Caption(format!("Minimum gradient {}", line_min_grad).as_str()),
                 LineStyle(Dash),
                 LineWidth(1.5),
-                Color("#009988"),
+                GnuPlotColor("#009988"),
             ],
         )
         .lines(
@@ -199,9 +208,10 @@ pub fn plot2(title: &str, x_label: &str, y_label: &str, data: TwoVarDataSet) {
                 Caption(format!("Maximum gradient {}", line_max_grad).as_str()),
                 LineStyle(Dash),
                 LineWidth(1.5),
-                Color("#0077BB"),
+                GnuPlotColor("#0077BB"),
             ],
         )
         .set_legend(Graph(0.99), Graph(0.95), &[], &[Font("Times", 13.0)]);
-    fg.show().unwrap();
-}*/
+    fg.show()?;
+    Ok(())
+}

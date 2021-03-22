@@ -76,6 +76,14 @@ fn main() {
             .validator(du_validator)
             .default_value("0.01")
             .help("Sets a default value for y uncertainty"))
+        .arg(Arg::with_name("backend")
+            .short("b")
+            .long("backend")
+            .value_name("BACKEND")
+            .possible_value("gnuplot")
+            .possible_value("plotters")
+            .default_value("plotters")
+            .help("Sets the plotting backend"))
         .get_matches();
     let dataset = two_var_data::TwoVarDataSet::from_file(
         &matches.value_of("DATASET_FILE").unwrap(),
@@ -86,10 +94,21 @@ fn main() {
         eprintln!("Error: {}", error);
         exit(2);
     }
-    plot::plot(
-        matches.value_of("title").unwrap(),
-        matches.value_of("x_label").unwrap(),
-        matches.value_of("y_label").unwrap(),
-        dataset.unwrap(),
-    ).unwrap();
+    match matches.value_of("backend").unwrap() {
+        "plotters" => plot::plot_plotters(
+            matches.value_of("title").unwrap(),
+            matches.value_of("x_label").unwrap(),
+            matches.value_of("y_label").unwrap(),
+            dataset.unwrap(),
+        )
+        .unwrap(),
+        "gnuplot" => plot::plot_gnuplot(
+            matches.value_of("title").unwrap(),
+            matches.value_of("x_label").unwrap(),
+            matches.value_of("y_label").unwrap(),
+            dataset.unwrap(),
+        )
+        .unwrap(),
+        _ => (),
+    }
 }

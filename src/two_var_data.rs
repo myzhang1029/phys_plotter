@@ -39,6 +39,26 @@ pub struct TwoVarDataPoint {
     pub y_uncertainty: f64,
 }
 
+/// Rules to define the function to get minimum/maximum x/y
+macro_rules! raw_defun_minmax {
+    ($name: ident, $cmp: ident, $val_name: ident, $uncer_name: ident, $uncer_sign: tt) => {
+        /// Get the $name value. if with_uncertainty is true, the uncertainties is also taken into account
+        pub fn $name(&self, with_uncertainty: bool) -> f64 {
+            if with_uncertainty {
+                let k = self.iter()
+                    .$cmp(|one, another| (one.$val_name $uncer_sign one.$uncer_name).partial_cmp(&(another.$val_name $uncer_sign another.$uncer_name)).unwrap())
+                    .unwrap();
+                k.$val_name $uncer_sign k.$uncer_name
+            } else {
+                self.iter()
+                    .max_by(|one, another| one.$val_name.partial_cmp(&another.$val_name).unwrap())
+                    .unwrap()
+                    .$val_name
+            }
+        }
+    };
+}
+
 impl TwoVarDataPoint {
     /// Parse a line
     /// line: The line to parse
@@ -169,37 +189,17 @@ impl TwoVarDataSet {
         self.iter().map(|item| item.y_uncertainty).collect()
     }
 
-    /// Get the maximum x value
-    pub fn max_x(&self) -> f64 {
-        self.iter()
-            .max_by(|one, another| one.x_value.partial_cmp(&another.x_value).unwrap())
-            .unwrap()
-            .x_value
-    }
+    // Get the maximum x value
+    raw_defun_minmax! {max_x, max_by, x_value, x_uncertainty, +}
 
-    /// Get the minimum x value
-    pub fn min_x(&self) -> f64 {
-        self.iter()
-            .min_by(|one, another| one.x_value.partial_cmp(&another.x_value).unwrap())
-            .unwrap()
-            .x_value
-    }
+    // Get the minimum x value
+    raw_defun_minmax! {min_x, min_by, x_value, x_uncertainty, -}
 
-    /// Get the maximum y value
-    pub fn max_y(&self) -> f64 {
-        self.iter()
-            .max_by(|one, another| one.y_value.partial_cmp(&another.y_value).unwrap())
-            .unwrap()
-            .y_value
-    }
+    // Get the maximum y value
+    raw_defun_minmax! {max_y, max_by, y_value, y_uncertainty, +}
 
-    /// Get the minimum y value
-    pub fn min_y(&self) -> f64 {
-        self.iter()
-            .min_by(|one, another| one.y_value.partial_cmp(&another.y_value).unwrap())
-            .unwrap()
-            .y_value
-    }
+    // Get the minimum y value
+    raw_defun_minmax! {min_y, min_by, y_value, y_uncertainty, -}
 
     /// Get line of best fit
     pub fn line_best_fit(&self) -> Line {

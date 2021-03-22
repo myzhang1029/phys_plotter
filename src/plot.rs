@@ -19,12 +19,16 @@
 
 use crate::two_var_data::TwoVarDataSet;
 use gnuplot::{
-    Auto, AxesCommon, Caption, Color, Dash, Figure, Graph, LineStyle, LineWidth, Mirror,
+    Auto, AxesCommon, Caption, Color, Dash, Figure, Font, Graph, LineStyle, LineWidth, Mirror,
     PointSymbol,
 };
 
 pub fn plot(title: &str, x_label: &str, y_label: &str, data: TwoVarDataSet) {
-    let ln_plt_x = Vec::from([data.min_x(), data.max_x()]);
+    // Extra length before min and after max
+    let extra = (data.max_x() - data.min_x()) * 0.1;
+    // Two points for plotting the lines
+    let ln_plt_x = Vec::from([data.min_x() - extra, data.max_x() + extra]);
+    // Three lines
     let line_best_fit = data.line_best_fit();
     let line_min_grad = data.line_min_grad();
     let line_max_grad = data.line_max_grad();
@@ -35,7 +39,7 @@ pub fn plot(title: &str, x_label: &str, y_label: &str, data: TwoVarDataSet) {
     let y_values = data.get_y_value();
     let mut fg = Figure::new();
     fg.axes2d()
-        .set_title(title, &[])
+        .set_title(title, &[Font("Arial", 20.0)])
         .set_x_label(x_label, &[])
         .set_y_label(y_label, &[])
         // Automatically generate ticks

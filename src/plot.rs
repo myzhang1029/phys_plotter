@@ -104,7 +104,7 @@ pub fn plot_plotters(
     .label(format!("Minimum gradient {}", line_min_grad).as_str())
     .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], line_min_grad_style!()));
     ctx.draw_series(LineSeries::new(
-        plot_x.iter().map(|x| (*x, line_min_grad.y(*x))),
+        plot_x.iter().map(|x| (*x, line_max_grad.y(*x))),
         line_max_grad_style!(),
     ))?
     .label(format!("Maximum gradient {}", line_max_grad).as_str())

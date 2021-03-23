@@ -70,7 +70,7 @@ pub fn plot_plotters(
     // Points for plotting the lines
     let plot_x = Vec::from([data.min_x(true) - extrax, data.max_x(true) + extrax]);
     // Create drawing area
-    let root_drawing_area = BitMapBackend::new("test.png", (1920, 1080)).into_drawing_area();
+    let root_drawing_area = BitMapBackend::new("test.png", (960, 540)).into_drawing_area();
     root_drawing_area.fill(&WHITE)?;
     let mut ctx = ChartBuilder::on(&root_drawing_area)
         .margin(5)

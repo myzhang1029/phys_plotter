@@ -51,7 +51,7 @@ macro_rules! raw_defun_minmax {
                 k.$val_name $uncer_sign k.$uncer_name
             } else {
                 self.iter()
-                    .max_by(|one, another| one.$val_name.partial_cmp(&another.$val_name).unwrap())
+                    .$cmp(|one, another| one.$val_name.partial_cmp(&another.$val_name).unwrap())
                     .unwrap()
                     .$val_name
             }

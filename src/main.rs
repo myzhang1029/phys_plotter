@@ -19,12 +19,15 @@
 
 extern crate clap;
 extern crate gnuplot;
+extern crate gtk;
+extern crate plotters;
 
-mod linear_data;
+mod data;
+mod gui;
 mod plot;
-mod two_var_data;
 
-use clap::{App, Arg};
+use clap::{crate_version, App, Arg};
+use data::TwoVarDataSet;
 use std::process::exit;
 
 /// Validator for uncertainties
@@ -37,7 +40,7 @@ fn du_validator(num: String) -> Result<(), String> {
 
 fn main() {
     let matches = App::new("Physics Plotter")
-        .version("0.1")
+        .version(crate_version!())
         .author("Zhang Maiyun <myzhang1029@hotmail.com>")
         .about("Plot physics two-variable observation data with best-fit lines, max,min-gradient lines, and error bars.")
         .arg(Arg::with_name("DATASET_FILE")
@@ -85,7 +88,7 @@ fn main() {
             .default_value("plotters")
             .help("Sets the plotting backend"))
         .get_matches();
-    let dataset = two_var_data::TwoVarDataSet::from_file(
+    let dataset = TwoVarDataSet::from_file(
         &matches.value_of("DATASET_FILE").unwrap(),
         matches.value_of("dux").unwrap().parse().unwrap(),
         matches.value_of("dux").unwrap().parse().unwrap(),

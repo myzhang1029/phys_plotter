@@ -17,7 +17,7 @@
 //  along with physics plotter.  If not, see <https://www.gnu.org/licenses/>.
 //
 
-use crate::linear_data::{Line, Point};
+use crate::data::{Line, Point};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{Error, ErrorKind};

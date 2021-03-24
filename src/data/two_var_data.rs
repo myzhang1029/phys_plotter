@@ -147,7 +147,7 @@ impl TwoVarDataSet {
     }
 
     /// Get an iterator of the underlying vector
-    pub fn iter(&self) -> Iter<TwoVarDataPoint> {
+    pub fn iter(&self) -> Iter<'_, TwoVarDataPoint> {
         self.dataset.iter()
     }
 

@@ -16,11 +16,7 @@
 //  You should have received a copy of the GNU General Public License
 //  along with physics plotter.  If not, see <https://www.gnu.org/licenses/>.
 //
-
-extern crate clap;
-extern crate gnuplot;
-extern crate gtk;
-extern crate plotters;
+#![warn(clippy::all, rust_2018_idioms)]
 
 mod data;
 mod gui;

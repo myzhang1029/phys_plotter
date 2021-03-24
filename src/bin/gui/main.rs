@@ -1,7 +1,7 @@
 use gtk::prelude::*;
 use gtk::{ButtonsType, DialogFlags, MessageDialog, MessageType, Window};
 
-pub fn init() {
+pub fn main() {
     if gtk::init().is_err() {
         println!("Failed to initialize GTK.");
         return;

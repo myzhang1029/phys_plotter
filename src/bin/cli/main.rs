@@ -16,14 +16,10 @@
 //  You should have received a copy of the GNU General Public License
 //  along with physics plotter.  If not, see <https://www.gnu.org/licenses/>.
 //
-#![warn(clippy::all, rust_2018_idioms)]
-
-mod data;
-mod gui;
-mod plot;
 
 use clap::{crate_version, App, Arg};
-use data::TwoVarDataSet;
+use phys_plotter::data::TwoVarDataSet;
+use phys_plotter::plot;
 use std::process::exit;
 
 /// Validator for uncertainties

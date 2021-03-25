@@ -1,17 +1,17 @@
-use gtk::prelude::*;
-use gtk::{ButtonsType, DialogFlags, MessageDialog, MessageType, Window};
+mod actions;
+mod menu;
+mod ui;
 
-pub fn main() {
-    if gtk::init().is_err() {
-        println!("Failed to initialize GTK.");
-        return;
-    }
-    MessageDialog::new(
-        None::<&Window>,
-        DialogFlags::empty(),
-        MessageType::Info,
-        ButtonsType::Ok,
-        "Hello World",
+use gio::prelude::*;
+
+use std::env;
+
+fn main() {
+    let uiapp = gtk::Application::new(
+        Some("bike.myzhangll.Physics.Plotter"),
+        gio::ApplicationFlags::FLAGS_NONE,
     )
-    .run();
+    .expect("Application::new failed");
+    uiapp.connect_activate(ui::app);
+    uiapp.run(&env::args().collect::<Vec<_>>());
 }

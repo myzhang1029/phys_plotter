@@ -100,7 +100,7 @@ impl TwoVarDataPoint {
 
 /// Struct representing a set of two-variable data and their uncertainties
 #[derive(Debug, Default, Clone)]
-pub struct TwoVarDataSet (Vec<TwoVarDataPoint>);
+pub struct TwoVarDataSet(Vec<TwoVarDataPoint>);
 
 impl Deref for TwoVarDataSet {
     type Target = Vec<TwoVarDataPoint>;

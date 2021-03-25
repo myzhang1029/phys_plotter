@@ -21,8 +21,7 @@ use crate::data::{Line, Point};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{Error, ErrorKind};
-use std::ops::Index;
-use std::slice::Iter;
+use std::ops::{Deref, DerefMut};
 
 /// Parse error types
 pub enum ParseError {
@@ -101,15 +100,19 @@ impl TwoVarDataPoint {
 
 /// Struct representing a set of two-variable data and their uncertainties
 #[derive(Debug, Default, Clone)]
-pub struct TwoVarDataSet {
-    dataset: Vec<TwoVarDataPoint>,
+pub struct TwoVarDataSet (Vec<TwoVarDataPoint>);
+
+impl Deref for TwoVarDataSet {
+    type Target = Vec<TwoVarDataPoint>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
-impl Index<usize> for TwoVarDataSet {
-    type Output = TwoVarDataPoint;
-
-    fn index(&self, idx: usize) -> &Self::Output {
-        &self.dataset[idx]
+impl DerefMut for TwoVarDataSet {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
@@ -138,17 +141,7 @@ impl TwoVarDataSet {
                 }
             }
         }
-        Ok(TwoVarDataSet { dataset: result })
-    }
-
-    /// Length of the underlying vector
-    pub fn len(&self) -> usize {
-        self.dataset.len()
-    }
-
-    /// Get an iterator of the underlying vector
-    pub fn iter(&self) -> Iter<'_, TwoVarDataPoint> {
-        self.dataset.iter()
+        Ok(TwoVarDataSet(result))
     }
 
     /// Get the arithmetic average value of x

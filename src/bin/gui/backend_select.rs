@@ -17,15 +17,14 @@
 //  along with physics plotter.  If not, see <https://www.gnu.org/licenses/>.
 //
 
-use clap::crate_version;
 use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk::AboutDialogBuilder;
 use gtk::License::Gpl30;
 
-pub fn register_actions(application: &gtk::Application, window: &gtk::ApplicationWindow) {
-    // About action to show an about dialog
+pub fn change_backend(application: &gtk::Application, window: &gtk::ApplicationWindow) {
+    // Action to change the selected backend
     let about = gio::SimpleAction::new("about", None);
     about.connect_activate(clone!(@weak window => move |_, _| {
         let dialog = AboutDialogBuilder::new()

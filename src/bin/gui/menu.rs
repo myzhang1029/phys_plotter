@@ -25,8 +25,8 @@ pub fn build_menu(application: &gtk::Application) {
 
     // Application menu
     let menu = gio::Menu::new();
-    menu.append(Some("About"), Some("app.about"));
-    menu.append(Some("Quit"), Some("app.quit"));
+    menu.append(Some("_About"), Some("app.about"));
+    menu.append(Some("_Quit"), Some("app.quit"));
     application.set_app_menu(Some(&menu));
 
     // First menu: files
@@ -35,15 +35,15 @@ pub fn build_menu(application: &gtk::Application) {
     // - save
     // - save as
     let files_menu = gio::Menu::new();
-    files_menu.append(Some("New"), Some("app.new"));
-    files_menu.append(Some("Open"), Some("app.open"));
-    files_menu.append(Some("Save"), Some("app.save"));
-    files_menu.append(Some("Save As"), Some("app.save_as"));
+    files_menu.append(Some("_New"), Some("app.new"));
+    files_menu.append(Some("_Open"), Some("app.open"));
+    files_menu.append(Some("_Save"), Some("app.save"));
+    files_menu.append(Some("Save _As"), Some("app.save_as"));
     menu_bar.append_submenu(Some("_Files"), &files_menu);
 
     // Second menu: plot
     let plot_menu = gio::Menu::new();
-    plot_menu.append(Some("Change Backend"), Some("app.change_backend"));
+    plot_menu.append(Some("Change _Backend"), Some("app.change_backend"));
     plot_menu.append(Some("Generate Plot"), Some("app.plot"));
     menu_bar.append_submenu(Some("_Plot"), &plot_menu);
 

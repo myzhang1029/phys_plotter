@@ -1,6 +1,7 @@
 mod actions;
 mod menu;
 mod ui;
+mod state;
 
 use gio::prelude::*;
 

@@ -41,7 +41,7 @@ fn main() {
             .index(1))
         .arg(Arg::with_name("title")
             .short("t")
-            .long("config")
+            .long("title")
             .value_name("TITLE")
             .default_value("Some Title")
             .help("Sets the title of the plot"))

@@ -132,6 +132,7 @@ fn draw_editing_area(state: &UIState) -> Paned {
         // Fill the entire box
         .vexpand(true)
         .hexpand(true)
+        .can_focus(true)
         .build();
     text_area.add(&text_area_text);
     editing_area.add1(&properties_area);

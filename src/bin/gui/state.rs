@@ -17,10 +17,13 @@
 //  along with physics plotter.  If not, see <https://www.gnu.org/licenses/>.
 //
 
+use gtk::prelude::*;
 use gtk::{EntryBuffer, TextBuffer, TextBufferBuilder};
 use phys_plotter::default_values as defv;
 use phys_plotter::save_format::PhysPlotterFile;
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
+use std::fs::File;
+use std::io::prelude::*;
 use std::str::FromStr;
 
 /// Struct for GUI app UI state
@@ -52,6 +55,17 @@ impl UIState {
             default_y_uncertainty: EntryBuffer::new(Some(defv::X_UNCERTAINTY)),
         }
     }
+
+    /// Save modified dataset
+    pub fn save_dataset(&self) -> Result<(), std::io::Error> {
+        let mut dataset_file = File::create(&self.dataset_file)?;
+        let range = self.dataset.get_bounds();
+        let dataset = self.dataset.get_text(&range.0, &range.1, true);
+        if let Some(dataset) = dataset {
+            dataset_file.write(dataset.as_bytes())?;
+        }
+        Ok(())
+    }
 }
 
 /// Create save file from the state
@@ -66,6 +80,27 @@ impl TryInto<PhysPlotterFile> for UIState {
             default_x_uncertainty: self.default_x_uncertainty.get_text().parse()?,
             default_y_uncertainty: self.default_x_uncertainty.get_text().parse()?,
             dataset_file: self.dataset_file,
+        })
+    }
+}
+
+/// Load saved file
+impl TryFrom<PhysPlotterFile> for UIState {
+    type Error = std::io::Error;
+    fn try_from(that: PhysPlotterFile) -> Result<Self, Self::Error> {
+        let mut data_file = File::open(&that.dataset_file)?;
+        let mut contents = String::new();
+        data_file.read_to_string(&mut contents)?;
+        Ok(Self {
+            file_path: Default::default(),
+            dataset_file: that.dataset_file,
+            title: EntryBuffer::new(Some(defv::TITLE)),
+            dataset: TextBufferBuilder::new().build(),
+            backend_name: EntryBuffer::new(Some(defv::BACKEND)),
+            x_label: EntryBuffer::new(Some(defv::X_LABEL)),
+            y_label: EntryBuffer::new(Some(defv::Y_LABEL)),
+            default_x_uncertainty: EntryBuffer::new(Some(defv::X_UNCERTAINTY)),
+            default_y_uncertainty: EntryBuffer::new(Some(defv::X_UNCERTAINTY)),
         })
     }
 }

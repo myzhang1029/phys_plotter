@@ -43,6 +43,10 @@ macro_rules! raw_defun_minmax {
     ($name: ident, $cmp: ident, $val_name: ident, $uncer_name: ident, $uncer_sign: tt) => {
         /// Get the $name value. if with_uncertainty is true, the uncertainties is also taken into account
         pub fn $name(&self, with_uncertainty: bool) -> f64 {
+            // Error check
+            if self.is_empty() {
+                return 0.0
+            }
             if with_uncertainty {
                 let k = self.iter()
                     .$cmp(|one, another| (one.$val_name $uncer_sign one.$uncer_name).partial_cmp(&(another.$val_name $uncer_sign another.$uncer_name)).unwrap())
@@ -224,6 +228,10 @@ impl TwoVarDataSet {
 
     /// Permute all possible lines by connecting the ends
     fn lines(&self) -> Vec<Line> {
+        // Error check
+        if self.is_empty() {
+            return vec![Default::default()];
+        }
         let firstx = self[0].x_value;
         let ufirstx = self[0].x_uncertainty;
         let firsty = self[0].y_value;

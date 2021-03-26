@@ -76,32 +76,34 @@ pub fn change_backend(
 
 macro_rules! parse_state_float_or_return {
     ($var: expr) => {
-        $var.borrow().get_text().parse().unwrap()
+        $var.borrow().get_text().parse()?
     };
 }
-fn do_generate_plot(state: &UIState) {
+fn do_generate_plot(state: &UIState) -> Result<(), Box<dyn std::error::Error>> {
     let borrowed_dataset = state.dataset.borrow();
     let range = borrowed_dataset.get_bounds();
-    let dataset = borrowed_dataset.get_text(&range.0, &range.1, true);
+    let dataset_text = borrowed_dataset
+        .get_text(&range.0, &range.1, true)
+        .unwrap_or_else(|| glib::GString::from(""));
+    let dataset = TwoVarDataSet::from_string(
+        dataset_text.as_str(),
+        parse_state_float_or_return!(state.default_x_uncertainty),
+        parse_state_float_or_return!(state.default_y_uncertainty),
+    )?;
     plot_gnuplot(
         state.title.borrow().get_text().as_str(),
         state.x_label.borrow().get_text().as_str(),
         state.y_label.borrow().get_text().as_str(),
-        TwoVarDataSet::from_string(
-            dataset.unwrap().as_str(),
-            parse_state_float_or_return!(state.default_x_uncertainty),
-            parse_state_float_or_return!(state.default_y_uncertainty),
-        )
-        .unwrap(),
-    )
-    .unwrap();
+        dataset,
+    )?;
+    Ok(())
 }
 
 /// Generate plot image or preview
 pub fn generate_plot(application: &gtk::Application, state: UIState) {
     let dialog = gio::SimpleAction::new("plot", None);
     dialog.connect_activate(move |_, _| {
-        do_generate_plot(&state);
+        do_generate_plot(&state).unwrap();
     });
     application.add_action(&dialog);
 }

@@ -19,6 +19,7 @@
 
 use clap::{crate_version, App, Arg};
 use phys_plotter::data::TwoVarDataSet;
+use phys_plotter::default_values as defv;
 use phys_plotter::plot;
 use std::process::exit;
 
@@ -43,33 +44,33 @@ fn main() {
             .short("t")
             .long("title")
             .value_name("TITLE")
-            .default_value("Some Title")
+            .default_value(defv::TITLE)
             .help("Sets the title of the plot"))
         .arg(Arg::with_name("x_label")
             .short("x")
             .long("x-label")
             .value_name("X_LABEL")
-            .default_value("x")
+            .default_value(defv::X_LABEL)
             .help("Sets the x axis label"))
         .arg(Arg::with_name("y_label")
             .short("y")
             .long("y-label")
             .value_name("Y_LABEL")
-            .default_value("y")
+            .default_value(defv::Y_LABEL)
             .help("Sets the y axis label"))
         .arg(Arg::with_name("dux")
             .short("X")
             .long("default-ux")
             .value_name("DEFAULT_X_UNCERTAINTY")
-            .default_value("0.01")
+            .default_value(defv::X_UNCERTAINTY)
             .validator(du_validator)
             .help("Sets a default value for x uncertainty"))
         .arg(Arg::with_name("duy")
             .short("Y")
             .long("default-uy")
             .value_name("DEFAULT_Y_UNCERTAINTY")
+            .default_value(defv::Y_UNCERTAINTY)
             .validator(du_validator)
-            .default_value("0.01")
             .help("Sets a default value for y uncertainty"))
         .arg(Arg::with_name("backend")
             .short("b")
@@ -77,7 +78,7 @@ fn main() {
             .value_name("BACKEND")
             .possible_value("gnuplot")
             .possible_value("plotters")
-            .default_value("plotters")
+            .default_value(defv::BACKEND)
             .help("Sets the plotting backend"))
         .get_matches();
     let dataset = TwoVarDataSet::from_file(

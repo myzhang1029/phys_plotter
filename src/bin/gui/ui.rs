@@ -19,12 +19,14 @@
 
 use crate::actions::register_actions;
 use crate::menu::build_menu;
+use crate::state::UIState;
 use gtk::prelude::*;
 use gtk::Orientation::{Horizontal, Vertical};
 use gtk::{
-    Box, HeaderBarBuilder, IconSize, Image, Label, Paned, ScrolledWindowBuilder, Separator,
-    TextView, ToolButtonBuilder, ToolItem, Toolbar, EntryBuilder
+    Box, EntryBuilder, HeaderBarBuilder, IconSize, Image, Label, Paned, ScrolledWindowBuilder,
+    Separator, TextViewBuilder, ToolButtonBuilder, ToolItem, Toolbar,
 };
+use phys_plotter::default_values as defv;
 
 /// Draw a toolbar at the top of the window
 fn draw_toolbar() -> Toolbar {
@@ -75,31 +77,32 @@ fn draw_toolbar() -> Toolbar {
 
 /// Create text input area
 macro_rules! text_input {
-    ($buffer: ident, $placeholder: expr) => {
+    ($buffer: expr, $placeholder: expr) => {
         EntryBuilder::new()
-        .editable(true)
-        .height_request(1)
-        .width_request(10)
-        .margin(5)
-        .placeholder_text($placeholder)
-        .build()
+            .editable(true)
+            .buffer($buffer)
+            .height_request(1)
+            .width_request(10)
+            .margin(5)
+            .placeholder_text($placeholder)
+            .build()
     };
 }
 
 /// Draw the properties area, on the left of the editing area
-fn draw_properties_area() -> Box {
+fn draw_properties_area(state: &UIState) -> Box {
     let properties_area = Box::new(Vertical, 1);
     let properties_area_title = HeaderBarBuilder::new().title("Properties").build();
     let title_label = Label::new(Some("Plot title"));
-    let title_input = text_input!(any, "Some Title");
+    let title_input = text_input!(&state.title, defv::TITLE);
     let xlabel_label = Label::new(Some("X axis label"));
-    let xlabel_input = text_input!(any, "x");
+    let xlabel_input = text_input!(&state.x_label, defv::X_LABEL);
     let ylabel_label = Label::new(Some("Y axis label"));
-    let ylabel_input = text_input!(any, "y");
+    let ylabel_input = text_input!(&state.y_label, defv::Y_LABEL);
     let ux_label = Label::new(Some("Default x uncertainty"));
-    let ux_input = text_input!(any, "0.01");
+    let ux_input = text_input!(&state.default_x_uncertainty, defv::X_UNCERTAINTY);
     let uy_label = Label::new(Some("Default y uncertainty"));
-    let uy_input = text_input!(any, "0.01");
+    let uy_input = text_input!(&state.default_y_uncertainty, defv::Y_UNCERTAINTY);
     properties_area.add(&properties_area_title);
     properties_area.add(&title_label);
     properties_area.add(&title_input);
@@ -115,14 +118,15 @@ fn draw_properties_area() -> Box {
 }
 
 /// Draw the editing area
-fn draw_editing_area() -> Paned {
+fn draw_editing_area(state: &UIState) -> Paned {
     let editing_area = Paned::new(Horizontal);
-    let properties_area = draw_properties_area();
+    let properties_area = draw_properties_area(state);
     let text_area = Box::new(Vertical, 10);
     let text_area_title = HeaderBarBuilder::new().title("Dataset").build();
     text_area.add(&text_area_title);
+    let text_area_view = TextViewBuilder::new().buffer(&state.dataset).build();
     let text_area_text = ScrolledWindowBuilder::new()
-        .child(&TextView::new())
+        .child(&text_area_view)
         // Have a border around
         .border_width(10)
         // Fill the entire box
@@ -138,6 +142,7 @@ fn draw_editing_area() -> Paned {
 
 /// Create the main window
 pub fn app(application: &gtk::Application) {
+    let state = UIState::new();
     // Main window
     let window = gtk::ApplicationWindow::new(application);
     // Set the size and the title
@@ -156,7 +161,7 @@ pub fn app(application: &gtk::Application) {
     container.add(&toolbar);
     container.add(&Separator::new(Horizontal));
     // Below: Editing area
-    let editing_area = draw_editing_area();
+    let editing_area = draw_editing_area(&state);
     container.add(&editing_area);
 
     window.add(&container);

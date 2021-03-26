@@ -17,14 +17,17 @@
 //  along with physics plotter.  If not, see <https://www.gnu.org/licenses/>.
 //
 
+use crate::state::UIState;
 use clap::crate_version;
 use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
-use gtk::AboutDialogBuilder;
 use gtk::License::Gpl30;
+use gtk::{AboutDialogBuilder, Dialog, DialogFlags, ResponseType};
+use phys_plotter::data::TwoVarDataSet;
+use phys_plotter::plot::plot_gnuplot;
 
-pub fn register_actions(application: &gtk::Application, window: &gtk::ApplicationWindow) {
+pub fn about_action(application: &gtk::Application, window: &gtk::ApplicationWindow) {
     // About action to show an about dialog
     let about = gio::SimpleAction::new("about", None);
     about.connect_activate(clone!(@weak window => move |_, _| {
@@ -44,4 +47,71 @@ pub fn register_actions(application: &gtk::Application, window: &gtk::Applicatio
         unsafe { dialog.destroy(); }
     }));
     application.add_action(&about);
+}
+
+/// TODO
+pub fn change_backend(
+    application: &gtk::Application,
+    window: &gtk::ApplicationWindow,
+    _state: &UIState,
+) {
+    // Action to change the selected backend
+    let dialog = gio::SimpleAction::new("change_backend", None);
+    dialog.connect_activate(clone!(@weak window => move |_, _| {
+        let dialog = Dialog::with_buttons(
+            Some("Plotting Backend"),
+            Some(&window),
+            DialogFlags::empty(),
+            &[
+                ("Apply", ResponseType::Apply),
+                ("Cancel", ResponseType::Cancel)
+            ]
+        );
+        dialog.show_all();
+        dialog.run();
+        unsafe { dialog.destroy(); }
+    }));
+    application.add_action(&dialog);
+}
+
+macro_rules! parse_state_float_or_return {
+    ($var: expr) => {
+        $var.borrow().get_text().parse().unwrap()
+    };
+}
+fn do_generate_plot(state: &UIState) {
+    let borrowed_dataset = state.dataset.borrow();
+    let range = borrowed_dataset.get_bounds();
+    let dataset = borrowed_dataset.get_text(&range.0, &range.1, true);
+    plot_gnuplot(
+        state.title.borrow().get_text().as_str(),
+        state.x_label.borrow().get_text().as_str(),
+        state.y_label.borrow().get_text().as_str(),
+        TwoVarDataSet::from_string(
+            dataset.unwrap().as_str(),
+            parse_state_float_or_return!(state.default_x_uncertainty),
+            parse_state_float_or_return!(state.default_y_uncertainty),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+}
+
+/// Generate plot image or preview
+pub fn generate_plot(application: &gtk::Application, state: UIState) {
+    let dialog = gio::SimpleAction::new("plot", None);
+    dialog.connect_activate(move |_, _| {
+        do_generate_plot(&state);
+    });
+    application.add_action(&dialog);
+}
+
+pub fn register_actions(
+    application: &gtk::Application,
+    window: &gtk::ApplicationWindow,
+    state: UIState,
+) {
+    about_action(application, window);
+    change_backend(application, window, &state);
+    generate_plot(application, state);
 }

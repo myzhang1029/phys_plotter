@@ -94,15 +94,15 @@ fn draw_properties_area(state: &UIState) -> Box {
     let properties_area = Box::new(Vertical, 1);
     let properties_area_title = HeaderBarBuilder::new().title("Properties").build();
     let title_label = Label::new(Some("Plot title"));
-    let title_input = text_input!(&state.title, defv::TITLE);
+    let title_input = text_input!(&*state.title.borrow(), defv::TITLE);
     let xlabel_label = Label::new(Some("X axis label"));
-    let xlabel_input = text_input!(&state.x_label, defv::X_LABEL);
+    let xlabel_input = text_input!(&*state.x_label.borrow(), defv::X_LABEL);
     let ylabel_label = Label::new(Some("Y axis label"));
-    let ylabel_input = text_input!(&state.y_label, defv::Y_LABEL);
+    let ylabel_input = text_input!(&*state.y_label.borrow(), defv::Y_LABEL);
     let ux_label = Label::new(Some("Default x uncertainty"));
-    let ux_input = text_input!(&state.default_x_uncertainty, defv::X_UNCERTAINTY);
+    let ux_input = text_input!(&*state.default_x_uncertainty.borrow(), defv::X_UNCERTAINTY);
     let uy_label = Label::new(Some("Default y uncertainty"));
-    let uy_input = text_input!(&state.default_y_uncertainty, defv::Y_UNCERTAINTY);
+    let uy_input = text_input!(&*state.default_y_uncertainty.borrow(), defv::Y_UNCERTAINTY);
     properties_area.add(&properties_area_title);
     properties_area.add(&title_label);
     properties_area.add(&title_input);
@@ -124,7 +124,9 @@ fn draw_editing_area(state: &UIState) -> Paned {
     let text_area = Box::new(Vertical, 10);
     let text_area_title = HeaderBarBuilder::new().title("Dataset").build();
     text_area.add(&text_area_title);
-    let text_area_view = TextViewBuilder::new().buffer(&state.dataset).build();
+    let text_area_view = TextViewBuilder::new()
+        .buffer(&*state.dataset.borrow())
+        .build();
     let text_area_text = ScrolledWindowBuilder::new()
         .child(&text_area_view)
         // Have a border around
@@ -143,7 +145,7 @@ fn draw_editing_area(state: &UIState) -> Paned {
 
 /// Create the main window
 pub fn app(application: &gtk::Application) {
-    let state = UIState::new();
+    let ui_state: UIState = UIState::new();
     // Main window
     let window = gtk::ApplicationWindow::new(application);
     // Set the size and the title
@@ -153,7 +155,6 @@ pub fn app(application: &gtk::Application) {
 
     // Create system menus
     build_menu(application);
-    register_actions(application, &window);
 
     // Main app container
     let container = Box::new(Vertical, 10);
@@ -162,7 +163,7 @@ pub fn app(application: &gtk::Application) {
     container.add(&toolbar);
     container.add(&Separator::new(Horizontal));
     // Below: Editing area
-    let editing_area = draw_editing_area(&state);
+    let editing_area = draw_editing_area(&ui_state);
     container.add(&editing_area);
 
     window.add(&container);
@@ -171,6 +172,7 @@ pub fn app(application: &gtk::Application) {
         &label.set_label("Hello, World!");
     });*/
 
+    register_actions(application, &window, ui_state);
     // Make all widgets visible.
     window.show_all();
 }

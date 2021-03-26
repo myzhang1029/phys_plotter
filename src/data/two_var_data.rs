@@ -126,8 +126,16 @@ impl TwoVarDataSet {
         let mut data_file = File::open(filename)?;
         let mut contents = String::new();
         data_file.read_to_string(&mut contents)?;
+        Self::from_string(&contents, dux, duy)
+    }
+
+    /// Parse a data string
+    /// buf: data string
+    /// dux: Default x uncertainty
+    /// duy: Default y uncertainty
+    pub fn from_string(buf: &str, dux: f64, duy: f64) -> Result<Self, Error> {
         // Split into lines
-        let lines: Vec<&str> = contents.split('\n').collect();
+        let lines: Vec<&str> = buf.split('\n').collect();
         let mut result: Vec<TwoVarDataPoint> = Vec::with_capacity(lines.len());
         for line in lines {
             match TwoVarDataPoint::from_line(line, dux, duy) {
@@ -141,7 +149,7 @@ impl TwoVarDataSet {
                 }
             }
         }
-        Ok(TwoVarDataSet(result))
+        Ok(Self(result))
     }
 
     /// Get the arithmetic average value of x

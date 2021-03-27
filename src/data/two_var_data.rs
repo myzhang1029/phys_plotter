@@ -47,14 +47,24 @@ macro_rules! raw_defun_minmax {
             if self.is_empty() {
                 return 0.0
             }
+            // The first and third unwraps are safe as long as there is no Inf or NaN (TODO)
+            // The second and fourth unwraps are safe because empty is handled
             if with_uncertainty {
                 let k = self.iter()
-                    .$cmp(|one, another| (one.$val_name $uncer_sign one.$uncer_name).partial_cmp(&(another.$val_name $uncer_sign another.$uncer_name)).unwrap())
+                    .$cmp(|one, another|
+                        (one.$val_name $uncer_sign one.$uncer_name)
+                            .partial_cmp(&(another.$val_name $uncer_sign another.$uncer_name))
+                            .unwrap()
+                    )
                     .unwrap();
                 k.$val_name $uncer_sign k.$uncer_name
             } else {
                 self.iter()
-                    .$cmp(|one, another| one.$val_name.partial_cmp(&another.$val_name).unwrap())
+                    .$cmp(|one, another|
+                        one.$val_name
+                            .partial_cmp(&another.$val_name)
+                            .unwrap()
+                    )
                     .unwrap()
                     .$val_name
             }
@@ -300,6 +310,8 @@ impl TwoVarDataSet {
     // Get the minimum gradient line
     pub fn line_min_grad(&self) -> Line {
         let lns = self.lines();
+        // The first unwrap is safe provided that self.lines never returns empty
+        // The second unwrap is not safe because 0.0/0.0 can happen (TODO)
         *lns.iter()
             .min_by(|one, another| one.gradient.partial_cmp(&another.gradient).unwrap())
             .unwrap()

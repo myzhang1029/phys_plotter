@@ -39,6 +39,7 @@ impl Line {
         let dx = last.x - first.x;
         let dy = last.y - first.y;
         let b = dy / dx;
+        // gradient can be NaN and y-intercept can be Inf
         Line {
             gradient: b,
             y_intercept: last.y - b * last.x,

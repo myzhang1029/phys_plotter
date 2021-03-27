@@ -78,7 +78,7 @@ impl FromStr for Backends {
 }
 
 /// Struct for GUI app UI state
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UIState {
     pub saved: bool,
     pub file_path: String,
@@ -120,7 +120,7 @@ impl UIState {
         Ok(())
     }
 
-    /// Safely  this state, ensures that the views are updated
+    /// Safely replace this state, ensures that the views are updated
     pub fn replace(&mut self, other: UIState) {
         self.saved = other.saved;
         self.file_path = other.file_path;

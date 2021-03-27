@@ -26,18 +26,18 @@ use glib::clone;
 use gtk::prelude::*;
 use gtk::License::Gpl30;
 use gtk::{
-    AboutDialogBuilder, Dialog, DialogBuilder, DialogFlags, DrawingArea, RadioButton, ResponseType,
+    AboutDialogBuilder, ButtonsType, DialogBuilder, DrawingArea, MessageDialogBuilder, RadioButton,
+    ResponseType,
 };
 use phys_plotter::data::TwoVarDataSet;
 use phys_plotter::plot;
 use phys_plotter::save_format::PhysPlotterFile;
 use plotters_cairo::CairoBackend;
-use serde_json::from_reader;
 use std::cell::RefCell;
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::BufReader;
+use std::io::{BufReader, BufWriter};
 use std::rc::Rc;
 
 fn about_action(application: &gtk::Application, window: &gtk::ApplicationWindow) {
@@ -219,6 +219,138 @@ fn generate_plot(
     application.add_action(&dialog);
 }
 
+/// Save everything without any overwrite checks. Expects both filenames to be correctly set
+fn do_save_to(state: UIState) -> std::io::Result<()> {
+    state.save_dataset()?;
+    let main_file = File::create(&state.file_path)?;
+    let writer = BufWriter::new(main_file);
+    let save_file: Result<PhysPlotterFile, _> = state.try_into();
+    if let Err(error) = save_file {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("Cannot parse float: {:?}", error),
+        ));
+    }
+    serde_json::to_writer(writer, &save_file.unwrap())?;
+    Ok(())
+}
+
+/// Immediately save two files without any check
+fn save_imm(window: &gtk::ApplicationWindow, state: &Rc<RefCell<UIState>>, _check: bool) {
+    unwrap_result_or_error_return!(
+        do_save_to((*state.borrow()).clone()),
+        &window,
+        "Cannot save file",
+        {}
+    );
+}
+
+// These macros are very dirty hacks
+macro_rules! defun_checks_save {
+    ($name: ident, $var: ident, $ok: path) => {
+        /// Wrapper to save dataset and project. If check is false, a new path of
+        /// the file is always asked from the used. Otherwise, if there is
+        /// recorded path, that one is used. check==false is useful for "Save As",
+        /// while true is useful for "Save". If the target exists, the user is prompted
+        /// whether to overwrite.
+        fn $name(
+            window: &gtk::ApplicationWindow,
+            state: &Rc<RefCell<UIState>>,
+            check: bool,
+        ) {
+            if !check || state.borrow().$var == String::default() {
+                let file_chooser = gtk::FileChooserDialog::new(
+                    Some("Save Project File"),
+                    Some(window),
+                    gtk::FileChooserAction::Save,
+                );
+                file_chooser.add_buttons(&[
+                    ("Save", gtk::ResponseType::Ok),
+                    ("Cancel", gtk::ResponseType::Cancel),
+                ]);
+                file_chooser.connect_response(
+                    clone!(@weak window, @strong state => move |file_chooser, response| {
+                        if response == gtk::ResponseType::Ok {
+                            let filename = unwrap_option_or_error_return!(
+                                file_chooser.get_filename(),
+                                &window,
+                                "Couldn't get filename",
+                                {file_chooser.close()}
+                            );
+                            if filename.exists() {
+                                // Confirmation about whether to overwrite
+                                let dialog = MessageDialogBuilder::new()
+                                    .transient_for(&window)
+                                    .title("Confirmation")
+                                    .text("File exists. Do you want to overwrite?")
+                                    .buttons(ButtonsType::YesNo)
+                                    .build();
+                                dialog.connect_response(clone!(@weak window, @weak file_chooser, @strong state => move |_,resp_type| {
+                                    if resp_type == ResponseType::Yes {
+                                        state.borrow_mut().$var = filename.display().to_string();
+                                        $ok(&window, &state, check);
+                                        file_chooser.close();
+                                    }
+                                }));
+                                dialog.show_all();
+                                dialog.run();
+                                unsafe { dialog.destroy();}
+                            } else {
+                                state.borrow_mut().$var = filename.display().to_string();
+                                file_chooser.close();
+                                $ok(&window, &state, check);
+                            }
+                        } else {
+                            file_chooser.close();
+                        }
+                    }),
+                );
+                file_chooser.show_all();
+            } else {
+                $ok(window, state, check);
+            }
+        }
+    };
+}
+
+defun_checks_save! {
+    maybe_check_main_file_save_all,
+    file_path,
+    save_imm
+}
+
+defun_checks_save! {
+    maybe_check_dataset_then_main_file_save_all,
+    dataset_file,
+    maybe_check_main_file_save_all
+}
+
+/// Save file, saves both the dataset and the project, possibly altering the state
+fn save(
+    application: &gtk::Application,
+    window: &gtk::ApplicationWindow,
+    state: &Rc<RefCell<UIState>>,
+) {
+    let save = gio::SimpleAction::new("save", None);
+    save.connect_activate(clone!(@weak window, @strong state => move |_, _| {
+        maybe_check_dataset_then_main_file_save_all(&window, &state, true);
+    }));
+    application.add_action(&save);
+}
+
+/// Save file as, saves both the dataset and the project, possibly altering the state
+fn save_as(
+    application: &gtk::Application,
+    window: &gtk::ApplicationWindow,
+    state: &Rc<RefCell<UIState>>,
+) {
+    let save_as = gio::SimpleAction::new("save_as", None);
+    save_as.connect_activate(clone!(@weak window, @strong state => move |_, _| {
+        maybe_check_dataset_then_main_file_save_all(&window, &state, false);
+    }));
+    application.add_action(&save_as);
+}
+
 /// Open file, possibly altering the state
 fn open_file(
     application: &gtk::Application,
@@ -253,7 +385,7 @@ fn open_file(
                 );
                 // First try to parse it as saved file
                 let reader = BufReader::new(file);
-                if let Ok(val) = from_reader::<_, PhysPlotterFile>(reader) {
+                if let Ok(val) = serde_json::from_reader::<_, PhysPlotterFile>(reader) {
                     let new_state: UIState = unwrap_result_or_error_return!(
                         val.try_into(),
                         &window,
@@ -296,15 +428,12 @@ fn new_plot(
             state.borrow_mut().replace(new_state);
         } else {
             // Not saved, ask if save
-            let dialog = Dialog::with_buttons(
-                Some("Are you sure?"),
-                Some(&window),
-                DialogFlags::empty(),
-                &[
-                    ("Discard", ResponseType::Yes),
-                    ("Go back", ResponseType::No),
-                ]
-            );
+            let dialog = MessageDialogBuilder::new()
+                .transient_for(&window)
+                .title("Confirmation")
+                .text("File modified but not saved, proceed?")
+                .buttons(ButtonsType::YesNo)
+                .build();
             dialog.connect_response(clone!(@strong state => move |_,resp_type| {
                 if resp_type == ResponseType::Yes {
                         let new_state = UIState::new();
@@ -333,6 +462,8 @@ pub fn register_actions(
     about_action(application, window);
     change_backend(application, window, &state);
     generate_plot(application, window, &state);
+    save(application, window, &state);
+    save_as(application, window, &state);
     open_file(application, window, &state);
     new_plot(application, window, &state);
     application.set_accels_for_action("app.quit", &["<Primary>Q"]);

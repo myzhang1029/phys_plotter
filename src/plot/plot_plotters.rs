@@ -51,12 +51,15 @@ macro_rules! line_max_grad_style {
     };
 }
 
-pub fn plot_plotters(
+/// Generic plotter for all kinds of backends
+pub fn plot_plotters<ET: std::error::Error + Send + Sync, T: DrawingBackend<ErrorType = ET>>(
     title: &str,
     x_label: &str,
     y_label: &str,
     data: TwoVarDataSet,
-) -> Result<(), Box<dyn std::error::Error>> {
+    backend: T,
+) -> Result<(), plotters::drawing::DrawingAreaErrorKind<ET>> {
+    // Those generic type parameters are so dreadful
     // Extra length before min and after max
     let extrax = (data.max_x(false) - data.min_x(false)) * 0.1;
     let extray = (data.max_y(false) - data.min_y(false)) * 0.1;
@@ -66,7 +69,7 @@ pub fn plot_plotters(
     // Points for plotting the lines
     let plot_x = Vec::from([data.min_x(true) - extrax, data.max_x(true) + extrax]);
     // Create drawing area
-    let root_drawing_area = BitMapBackend::new("test.png", (960, 540)).into_drawing_area();
+    let root_drawing_area = backend.into_drawing_area();
     root_drawing_area.fill(&WHITE)?;
     let mut ctx = ChartBuilder::on(&root_drawing_area)
         .margin(5)

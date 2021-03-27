@@ -21,6 +21,7 @@ use clap::{crate_version, App, Arg};
 use phys_plotter::data::TwoVarDataSet;
 use phys_plotter::default_values as defv;
 use phys_plotter::plot;
+use plotters::prelude::*;
 use std::process::exit;
 
 /// Validator for uncertainties
@@ -96,6 +97,7 @@ fn main() {
             matches.value_of("x_label").unwrap(),
             matches.value_of("y_label").unwrap(),
             dataset.unwrap(),
+            BitMapBackend::new("test.png", (960, 540)),
         )
         .unwrap(),
         "gnuplot" => plot::plot_gnuplot(

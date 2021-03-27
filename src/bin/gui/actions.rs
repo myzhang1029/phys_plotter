@@ -307,7 +307,7 @@ fn new_plot(
 pub fn register_actions(
     application: &gtk::Application,
     window: &gtk::ApplicationWindow,
-    state: Rc<RefCell<UIState>>,
+    state: &Rc<RefCell<UIState>>,
 ) {
     about_action(application, window);
     change_backend(application, window, &state);

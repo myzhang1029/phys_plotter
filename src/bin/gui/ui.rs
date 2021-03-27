@@ -113,20 +113,49 @@ macro_rules! text_input {
     };
 }
 
+/// Set saved to false on edit
+macro_rules! unsave {
+    ($state: ident) => {{
+        // Only update if we can borrow, this might be fragile,
+        // but it's the best I can do since at least concurrent borrow will
+        // happen when replacing the cell.
+        // From testing, this is also the sole scenario in which it happens
+        if let Ok(mut borrowed) = $state.try_borrow_mut() {
+            borrowed.saved = false;
+        }
+    }};
+}
+macro_rules! unsave_entry {
+    ($item: expr, $state: ident) => {
+        $item.connect_changed(clone!(@strong $state => move |_| unsave!($state)))
+    };
+}
+macro_rules! unsave_text {
+    ($item: expr, $state: ident) => {
+        $item.connect_preedit_changed(clone!(@strong $state => move |_,_| unsave!($state)))
+    };
+}
+
 /// Draw the properties area, on the left of the editing area
-fn draw_properties_area(state: &UIState) -> Box {
+fn draw_properties_area(state: &Rc<RefCell<UIState>>) -> Box {
+    let state_borrowed = state.borrow();
     let properties_area = Box::new(Vertical, 1);
     let properties_area_title = HeaderBarBuilder::new().title("Properties").build();
     let title_label = Label::new(Some("Plot title"));
-    let title_input = text_input!(&state.title, defv::TITLE);
+    let title_input = text_input!(&state_borrowed.title, defv::TITLE);
+    unsave_entry!(title_input, state);
     let xlabel_label = Label::new(Some("X axis label"));
-    let xlabel_input = text_input!(&state.x_label, defv::X_LABEL);
+    let xlabel_input = text_input!(&state_borrowed.x_label, defv::X_LABEL);
+    unsave_entry!(xlabel_input, state);
     let ylabel_label = Label::new(Some("Y axis label"));
-    let ylabel_input = text_input!(&state.y_label, defv::Y_LABEL);
+    let ylabel_input = text_input!(&state_borrowed.y_label, defv::Y_LABEL);
+    unsave_entry!(ylabel_input, state);
     let ux_label = Label::new(Some("Default x uncertainty"));
-    let ux_input = text_input!(&state.default_x_uncertainty, defv::X_UNCERTAINTY);
+    let ux_input = text_input!(&state_borrowed.default_x_uncertainty, defv::X_UNCERTAINTY);
+    unsave_entry!(ux_input, state);
     let uy_label = Label::new(Some("Default y uncertainty"));
-    let uy_input = text_input!(&state.default_y_uncertainty, defv::Y_UNCERTAINTY);
+    let uy_input = text_input!(&state_borrowed.default_y_uncertainty, defv::Y_UNCERTAINTY);
+    unsave_entry!(uy_input, state);
     properties_area.add(&properties_area_title);
     properties_area.add(&title_label);
     properties_area.add(&title_input);
@@ -142,13 +171,16 @@ fn draw_properties_area(state: &UIState) -> Box {
 }
 
 /// Draw the editing area
-fn draw_editing_area(state: &UIState) -> Paned {
+fn draw_editing_area(state: &Rc<RefCell<UIState>>) -> Paned {
     let editing_area = Paned::new(Horizontal);
     let properties_area = draw_properties_area(state);
     let text_area = Box::new(Vertical, 10);
     let text_area_title = HeaderBarBuilder::new().title("Dataset").build();
     text_area.add(&text_area_title);
-    let text_area_view = TextViewBuilder::new().buffer(&state.dataset).build();
+    let text_area_view = TextViewBuilder::new()
+        .buffer(&state.borrow().dataset)
+        .build();
+    unsave_text!(text_area_view, state);
     let text_area_text = ScrolledWindowBuilder::new()
         .child(&text_area_view)
         // Have a border around
@@ -185,7 +217,7 @@ pub fn app(application: &gtk::Application) {
     container.add(&toolbar);
     container.add(&Separator::new(Horizontal));
     // Below: Editing area
-    let editing_area = draw_editing_area(&ui_state.borrow());
+    let editing_area = draw_editing_area(&ui_state);
     container.add(&editing_area);
 
     window.add(&container);
@@ -194,7 +226,7 @@ pub fn app(application: &gtk::Application) {
         &label.set_label("Hello, World!");
     });*/
 
-    register_actions(application, &window, ui_state);
+    register_actions(application, &window, &ui_state);
     // Make all widgets visible.
     window.show_all();
 }

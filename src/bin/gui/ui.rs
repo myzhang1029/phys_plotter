@@ -20,11 +20,13 @@
 use crate::actions::register_actions;
 use crate::menu::build_menu;
 use crate::state::UIState;
+use glib::clone;
 use gtk::prelude::*;
 use gtk::Orientation::{Horizontal, Vertical};
 use gtk::{
-    Box, EntryBuilder, HeaderBarBuilder, IconSize, Image, Label, Paned, ScrolledWindowBuilder,
-    Separator, TextViewBuilder, ToolButtonBuilder, ToolItem, Toolbar,
+    Box, EntryBuilder, HeaderBarBuilder, IconSize, Image, Label, MessageDialog,
+    MessageDialogBuilder, Paned, ScrolledWindowBuilder, Separator, TextViewBuilder,
+    ToolButtonBuilder, ToolItem, Toolbar,
 };
 use phys_plotter::default_values as defv;
 use std::cell::RefCell;
@@ -195,4 +197,55 @@ pub fn app(application: &gtk::Application) {
     register_actions(application, &window, ui_state);
     // Make all widgets visible.
     window.show_all();
+}
+
+/// Create an error popup that belons to window, with title and error message.
+/// When the dismiss button is clicked, the dialog is destroyed automatically.
+pub fn create_error_popup(
+    window: &gtk::ApplicationWindow,
+    title: &str,
+    error: &str,
+) -> MessageDialog {
+    let dialog = MessageDialogBuilder::new()
+        .transient_for(window)
+        .window_position(gtk::WindowPosition::CenterOnParent)
+        .message_type(gtk::MessageType::Error)
+        .title(title)
+        .icon_name("dialog-error")
+        .text(error)
+        .buttons(gtk::ButtonsType::Close)
+        .build();
+    dialog.connect_response(clone!(@strong dialog => move |_, _| {
+        unsafe { dialog.destroy(); }
+    }));
+    dialog.show_all();
+    dialog
+}
+
+/// Unwrap an option or create an error popup
+#[macro_export]
+macro_rules! unwrap_option_or_error_return {
+    ($thing: expr, $window: expr, $msg: expr, $retv: block) => {
+        match $thing {
+            Some(result) => result,
+            None => {
+                create_error_popup($window, "Error", $msg);
+                return $retv;
+            }
+        }
+    };
+}
+
+/// Unwrap a result or create an error popup
+#[macro_export]
+macro_rules! unwrap_result_or_error_return {
+    ($thing: expr, $window: expr, $msg: expr, $retv: block) => {
+        match $thing {
+            Ok(result) => result,
+            Err(error) => {
+                create_error_popup($window, "Error", &format!("{}: {:?}", $msg, error));
+                return $retv;
+            }
+        }
+    };
 }

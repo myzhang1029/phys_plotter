@@ -18,6 +18,8 @@
 //
 
 use crate::state::UIState;
+use crate::ui::create_error_popup;
+use crate::{unwrap_option_or_error_return, unwrap_result_or_error_return};
 use clap::crate_version;
 use gio::prelude::*;
 use glib::clone;
@@ -94,16 +96,20 @@ macro_rules! parse_state_float_or_return {
 }
 
 fn do_generate_plot(state: &UIState) -> Result<(), Box<dyn std::error::Error>> {
+    // Get the range of the dataset text
     let range = state.dataset.get_bounds();
     let dataset_text = state
         .dataset
         .get_text(&range.0, &range.1, true)
         .unwrap_or_else(|| glib::GString::from(""));
+    // Construct dataset from the input
     let dataset = TwoVarDataSet::from_string(
         dataset_text.as_str(),
         parse_state_float_or_return!(state.default_x_uncertainty),
         parse_state_float_or_return!(state.default_y_uncertainty),
     )?;
+    // Call plotting backend
+    // TODO: Regard selected backend
     plot_gnuplot(
         state.title.get_text().as_str(),
         state.x_label.get_text().as_str(),
@@ -114,11 +120,19 @@ fn do_generate_plot(state: &UIState) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Generate plot image or preview, reading the state
-fn generate_plot(application: &gtk::Application, state: &Rc<RefCell<UIState>>) {
+fn generate_plot(
+    application: &gtk::Application,
+    window: &gtk::ApplicationWindow,
+    state: &Rc<RefCell<UIState>>,
+) {
     let dialog = gio::SimpleAction::new("plot", None);
-    dialog.connect_activate(clone!(@strong state => move |_, _| {
-        /* TODO: resolve this unwrap */
-        do_generate_plot(&state.borrow()).unwrap();
+    dialog.connect_activate(clone!(@weak window, @strong state => move |_, _| {
+        unwrap_result_or_error_return!(
+            do_generate_plot(&state.borrow()),
+            &window,
+            "Failed to open plot",
+            {}
+        );
     }));
     application.add_action(&dialog);
 }
@@ -131,6 +145,7 @@ fn open_file(
 ) {
     let open_file = gio::SimpleAction::new("open", None);
     open_file.connect_activate(clone!(@weak window, @strong state => move |_, _| {
+        // Use file chooser to choose file
         let file_chooser = gtk::FileChooserDialog::new(
             Some("Open File"),
             Some(&window),
@@ -140,16 +155,38 @@ fn open_file(
             ("Open", gtk::ResponseType::Ok),
             ("Cancel", gtk::ResponseType::Cancel),
         ]);
-        file_chooser.connect_response(clone!(@strong state => move |file_chooser, response| {
-            /* TODO: Resolve unwraps and expects here */
+        file_chooser.connect_response(clone!(@weak window, @strong state => move |file_chooser, response| {
             if response == gtk::ResponseType::Ok {
-                let filename = file_chooser.get_filename().expect("Couldn't get filename");
-                let file = File::open(&filename).expect("Couldn't open file");
+                let filename = unwrap_option_or_error_return!(
+                    file_chooser.get_filename(),
+                    &window,
+                    "Couldn't get filename",
+                    {file_chooser.close()}
+                );
+                let file = unwrap_result_or_error_return!(
+                    File::open(&filename),
+                    &window,
+                    "Couldn't open file",
+                    {file_chooser.close()}
+                );
+                // First try to parse it as saved file
                 let reader = BufReader::new(file);
                 if let Ok(val) = from_reader::<_, PhysPlotterFile>(reader) {
-                    state.replace(val.try_into().unwrap());
+                    let new_state: UIState = unwrap_result_or_error_return!(
+                        val.try_into(),
+                        &window,
+                        "Couldn't parse file",
+                        {file_chooser.close()}
+                    );
+                    state.replace(new_state);
                 }
-                let mut file = File::open(&filename).expect("Couldn't open file");
+                // Else treat as plain dataset text
+                let mut file = unwrap_result_or_error_return!(
+                    File::open(&filename),
+                    &window,
+                    "Couldn't open file",
+                    {file_chooser.close()}
+                );
                 let mut contents = String::new();
                 let _ = file.read_to_string(&mut contents);
                 let mut state = state.borrow_mut();
@@ -164,6 +201,7 @@ fn open_file(
     application.add_action(&open_file);
 }
 
+/// Register application actions
 pub fn register_actions(
     application: &gtk::Application,
     window: &gtk::ApplicationWindow,
@@ -171,6 +209,6 @@ pub fn register_actions(
 ) {
     about_action(application, window);
     change_backend(application, window, &state);
-    generate_plot(application, &state);
+    generate_plot(application, window, &state);
     open_file(application, window, &state);
 }

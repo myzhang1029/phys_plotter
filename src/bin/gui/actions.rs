@@ -244,7 +244,7 @@ fn open_file(
                         "Couldn't parse file",
                         {file_chooser.close()}
                     );
-                    state.replace(new_state);
+                        state.borrow_mut().replace(new_state);
                 }
                 // Else treat as plain dataset text
                 let mut file = unwrap_result_or_error_return!(
@@ -267,6 +267,42 @@ fn open_file(
     application.add_action(&open_file);
 }
 
+/// Create a new plot, possibly altering state
+fn new_plot(
+    application: &gtk::Application,
+    window: &gtk::ApplicationWindow,
+    state: &Rc<RefCell<UIState>>,
+) {
+    let new_file = gio::SimpleAction::new("new", None);
+    new_file.connect_activate(clone!(@weak window, @strong state => move |_, _| {
+        if state.borrow().saved {
+            let new_state = UIState::new();
+            state.borrow_mut().replace(new_state);
+        } else {
+            // Not saved, ask if save
+            let dialog = Dialog::with_buttons(
+                Some("Are you sure?"),
+                Some(&window),
+                DialogFlags::empty(),
+                &[
+                    ("Discard", ResponseType::Yes),
+                    ("Go back", ResponseType::No),
+                ]
+            );
+            dialog.connect_response(clone!(@strong state => move |_,resp_type| {
+                if resp_type == ResponseType::Yes {
+                        let new_state = UIState::new();
+                        state.borrow_mut().replace(new_state);
+                }
+            }));
+            dialog.show_all();
+            dialog.run();
+            unsafe { dialog.destroy(); }
+        }
+    }));
+    application.add_action(&new_file);
+}
+
 /// Register application actions
 pub fn register_actions(
     application: &gtk::Application,
@@ -277,4 +313,5 @@ pub fn register_actions(
     change_backend(application, window, &state);
     generate_plot(application, window, &state);
     open_file(application, window, &state);
+    new_plot(application, window, &state);
 }

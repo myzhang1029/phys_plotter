@@ -68,6 +68,28 @@ impl UIState {
         }
         Ok(())
     }
+
+    /// Safely  this state, ensures that the views are updated
+    pub fn replace(&mut self, other: UIState) {
+        self.saved = other.saved;
+        self.file_path = other.file_path;
+        self.dataset_file = other.dataset_file;
+        self.title.set_text(&other.title.get_text());
+        let range = other.dataset.get_bounds();
+        self.dataset.set_text(
+            &other
+                .dataset
+                .get_text(&range.0, &range.1, true)
+                .unwrap_or_else(|| glib::GString::from("")),
+        );
+        self.backend_name.set_text(&other.backend_name.get_text());
+        self.x_label.set_text(&other.x_label.get_text());
+        self.y_label.set_text(&other.y_label.get_text());
+        self.default_x_uncertainty
+            .set_text(&other.default_x_uncertainty.get_text());
+        self.default_y_uncertainty
+            .set_text(&other.default_y_uncertainty.get_text());
+    }
 }
 
 /// Create save file from the state

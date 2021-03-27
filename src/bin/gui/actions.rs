@@ -325,9 +325,22 @@ pub fn register_actions(
     window: &gtk::ApplicationWindow,
     state: &Rc<RefCell<UIState>>,
 ) {
+    let quit = gio::SimpleAction::new("quit", None);
+    quit.connect_activate(clone!(@weak application => move |_,_| {
+        application.quit();
+    }));
+    application.add_action(&quit);
     about_action(application, window);
     change_backend(application, window, &state);
     generate_plot(application, window, &state);
     open_file(application, window, &state);
     new_plot(application, window, &state);
+    application.set_accels_for_action("app.quit", &["<Primary>Q"]);
+    application.set_accels_for_action("app.about", &["<Primary>A"]);
+    application.set_accels_for_action("app.change_backend", &["<Primary>B"]);
+    application.set_accels_for_action("app.plot", &["<Primary>G"]);
+    application.set_accels_for_action("app.save", &["<Primary>S"]);
+    application.set_accels_for_action("app.save_as", &["<Primary><Shift>S"]);
+    application.set_accels_for_action("app.open", &["<Primary>O"]);
+    application.set_accels_for_action("app.new", &["<Primary>N"]);
 }

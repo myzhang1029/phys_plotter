@@ -44,7 +44,7 @@ pub fn build_menu(application: &gtk::Application) {
     // Second menu: plot
     let plot_menu = gio::Menu::new();
     plot_menu.append(Some("Change _Backend"), Some("app.change_backend"));
-    plot_menu.append(Some("Generate Plot"), Some("app.plot"));
+    plot_menu.append(Some("_Generate Plot"), Some("app.plot"));
     menu_bar.append_submenu(Some("_Plot"), &plot_menu);
 
     application.set_menubar(Some(&menu_bar));

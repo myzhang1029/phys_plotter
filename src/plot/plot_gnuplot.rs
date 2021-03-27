@@ -18,16 +18,19 @@
 //
 
 use crate::data::TwoVarDataSet;
+use crate::plot::SaveOptions;
 use gnuplot::{
     Auto, AxesCommon, Caption, Color, Dash, Figure, Font, GnuplotInitError, Graph, LineStyle,
     LineWidth,
 };
 
+/// Plot dataset with the gnuplot backend. If save is None, the graph is only shown, else the graph is saved
 pub fn plot_gnuplot(
     title: &str,
     x_label: &str,
     y_label: &str,
     data: TwoVarDataSet,
+    save: Option<SaveOptions<'_>>,
 ) -> Result<(), GnuplotInitError> {
     // Extra length before min and after max
     let extra = (data.max_x(false) - data.min_x(false)) * 0.1;
@@ -96,6 +99,13 @@ pub fn plot_gnuplot(
             ],
         )
         .set_legend(Graph(0.99), Graph(0.95), &[], &[Font("Times", 13.0)]);
-    fg.show()?;
+    match save {
+        Some(save) => {
+            fg.save_to_png(save.path, save.width, save.height)?;
+        }
+        None => {
+            fg.show()?;
+        }
+    };
     Ok(())
 }

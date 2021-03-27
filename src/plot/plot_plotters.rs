@@ -51,7 +51,7 @@ macro_rules! line_max_grad_style {
     };
 }
 
-/// Generic plotter for all kinds of backends
+/// Generic plotter for all kinds of backends.
 pub fn plot_plotters<ET: std::error::Error + Send + Sync, T: DrawingBackend<ErrorType = ET>>(
     title: &str,
     x_label: &str,

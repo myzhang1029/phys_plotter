@@ -32,6 +32,14 @@ fn du_validator(num: String) -> Result<(), String> {
     }
 }
 
+/// Validator for height and width
+fn size_validator(num: String) -> Result<(), String> {
+    match num.parse::<u32>() {
+        Ok(_) => Ok(()),
+        Err(error) => Err(format!("{}", error)),
+    }
+}
+
 fn main() {
     let matches = App::new("Physics Plotter")
         .version(crate_version!())
@@ -81,6 +89,26 @@ fn main() {
             .possible_value("plotters")
             .default_value(defv::BACKEND)
             .help("Sets the plotting backend"))
+        .arg(Arg::with_name("out_file")
+            .short("s")
+            .long("save-to")
+            .value_name("PATH")
+            .required_if("backend", "plotters")
+            .help("Saves the graph to PATH instead of showing it"))
+        .arg(Arg::with_name("width")
+            .short("w")
+            .long("width")
+            .value_name("WIDTH")
+            .requires("out_file")
+            .validator(size_validator)
+            .help("Sets the image width in pixels (recommended: 960)"))
+        .arg(Arg::with_name("height")
+            .short("h")
+            .long("height")
+            .value_name("HEIGHT")
+            .requires("out_file")
+            .validator(size_validator)
+            .help("Sets the image height in pixels (recommended: 540)"))
         .get_matches();
     let dataset = TwoVarDataSet::from_file(
         &matches.value_of("DATASET_FILE").unwrap(),
@@ -97,7 +125,14 @@ fn main() {
             matches.value_of("x_label").unwrap(),
             matches.value_of("y_label").unwrap(),
             dataset.unwrap(),
-            BitMapBackend::new("test.png", (960, 540)),
+            // The clap rule will ensure that this argument exists
+            BitMapBackend::new(
+                matches.value_of("out_file").unwrap(),
+                (
+                    matches.value_of("width").unwrap().parse().unwrap(),
+                    matches.value_of("height").unwrap().parse().unwrap(),
+                ),
+            ),
         )
         .unwrap(),
         "gnuplot" => plot::plot_gnuplot(
@@ -105,6 +140,14 @@ fn main() {
             matches.value_of("x_label").unwrap(),
             matches.value_of("y_label").unwrap(),
             dataset.unwrap(),
+            match matches.value_of("out_file") {
+                Some(path) => Some(plot::SaveOptions {
+                    path: std::path::Path::new(path),
+                    width: matches.value_of("width").unwrap().parse().unwrap(),
+                    height: matches.value_of("height").unwrap().parse().unwrap(),
+                }),
+                None => None,
+            },
         )
         .unwrap(),
         _ => (),

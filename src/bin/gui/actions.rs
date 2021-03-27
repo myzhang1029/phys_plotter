@@ -115,6 +115,7 @@ fn do_generate_plot(state: &UIState) -> Result<(), Box<dyn std::error::Error>> {
         state.x_label.get_text().as_str(),
         state.y_label.get_text().as_str(),
         dataset,
+        None,
     )?;
     Ok(())
 }

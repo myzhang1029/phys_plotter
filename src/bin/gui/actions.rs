@@ -17,7 +17,7 @@
 //  along with physics plotter.  If not, see <https://www.gnu.org/licenses/>.
 //
 
-use crate::state::UIState;
+use crate::state::{Backends, UIState};
 use crate::ui::create_error_popup;
 use crate::{unwrap_option_or_error_return, unwrap_result_or_error_return};
 use clap::crate_version;
@@ -25,7 +25,9 @@ use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk::License::Gpl30;
-use gtk::{AboutDialogBuilder, Dialog, DialogFlags, DrawingArea, ResponseType};
+use gtk::{
+    AboutDialogBuilder, Dialog, DialogBuilder, DialogFlags, DrawingArea, RadioButton, ResponseType,
+};
 use phys_plotter::data::TwoVarDataSet;
 use phys_plotter::plot;
 use phys_plotter::save_format::PhysPlotterFile;
@@ -69,20 +71,35 @@ fn change_backend(
     // Action to change the selected backend
     let dialog = gio::SimpleAction::new("change_backend", None);
     dialog.connect_activate(clone!(@weak window, @strong state => move |_, _| {
-        let dialog = Dialog::with_buttons(
-            Some("Plotting Backend"),
-            Some(&window),
-            DialogFlags::empty(),
-            &[
-                ("Apply", ResponseType::Apply),
-                ("Cancel", ResponseType::Cancel)
-            ]
-        );
+        let dialog = DialogBuilder::new()
+            .title("Plotting Backend")
+            .attached_to(&window)
+            .transient_for(&window)
+            .build();
+        let radiobutton_1 = RadioButton::new();
+        radiobutton_1.set_label("plotters");
+        let radiobutton_2 = RadioButton::new();
+        radiobutton_2.set_label("gnuplot");
+        match state.borrow().backend {
+            Backends::Plotters => {radiobutton_2.join_group(Some(&radiobutton_1));},
+            Backends::Gnuplot => {
+            radiobutton_1.join_group(Some(&radiobutton_2));
+            }
+        }
+        dialog.add_action_widget(&radiobutton_1, ResponseType::Other(1));
+        dialog.add_action_widget(&radiobutton_2, ResponseType::Other(2));
         dialog.connect_response(clone!(@strong state => move |_,resp_type| {
-            if resp_type == ResponseType::Apply {
-                //abc;
+            match resp_type {
+                ResponseType::Other(1) => {
+                    state.borrow_mut().backend = Backends::Plotters
+                },
+                ResponseType::Other(2) => {
+                    state.borrow_mut().backend =Backends::Gnuplot
+                },
+                _ => ()
             }
         }));
+        //radiobuttons.show_all();
         dialog.show_all();
         dialog.run();
         unsafe { dialog.destroy(); }
@@ -145,9 +162,9 @@ fn do_generate_plot(
     let x_label = state_local.x_label.get_text();
     let y_label = state_local.y_label.get_text();
     // Call plotting backend
-    match state_local.backend_name.get_text().as_str() {
-        "gnuplot" => plot::plot_gnuplot(&title, &x_label, &y_label, &dataset, None)?,
-        "plotters" => {
+    match state_local.backend {
+        Backends::Gnuplot => plot::plot_gnuplot(&title, &x_label, &y_label, &dataset, None)?,
+        Backends::Plotters => {
             // Create a new window for drawing
             let plot_window = gtk::Window::new(gtk::WindowType::Toplevel);
             application.add_window(&plot_window);
@@ -178,7 +195,6 @@ fn do_generate_plot(
             plot_window.add(&drawing_area);
             plot_window.show_all();
         }
-        _ => (),
     };
     Ok(())
 }

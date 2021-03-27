@@ -49,6 +49,26 @@ fn draw_toolbar() -> Toolbar {
         .action_name("app.open")
         .build();
     toolbar.add(&button_open);
+    let button_save = ToolButtonBuilder::new()
+        .label("_Save")
+        .label_widget(&Image::from_icon_name(
+            Some("document-save"),
+            IconSize::Menu,
+        ))
+        .tooltip_text("Save the document")
+        .action_name("app.save")
+        .build();
+    toolbar.add(&button_save);
+    let button_save_as = ToolButtonBuilder::new()
+        .label("Save _As")
+        .label_widget(&Image::from_icon_name(
+            Some("document-save-as"),
+            IconSize::Menu,
+        ))
+        .tooltip_text("Save the document as")
+        .action_name("app.save_as")
+        .build();
+    toolbar.add(&button_save_as);
     let divider = ToolItem::new();
     divider.add(&Separator::new(Vertical));
     toolbar.add(&divider);

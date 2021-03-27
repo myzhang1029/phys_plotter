@@ -124,7 +124,7 @@ fn main() {
             matches.value_of("title").unwrap(),
             matches.value_of("x_label").unwrap(),
             matches.value_of("y_label").unwrap(),
-            dataset.unwrap(),
+            &dataset.unwrap(),
             // The clap rule will ensure that this argument exists
             BitMapBackend::new(
                 matches.value_of("out_file").unwrap(),
@@ -139,7 +139,7 @@ fn main() {
             matches.value_of("title").unwrap(),
             matches.value_of("x_label").unwrap(),
             matches.value_of("y_label").unwrap(),
-            dataset.unwrap(),
+            &dataset.unwrap(),
             match matches.value_of("out_file") {
                 Some(path) => Some(plot::SaveOptions {
                     path: std::path::Path::new(path),

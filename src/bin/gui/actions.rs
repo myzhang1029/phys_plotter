@@ -25,10 +25,11 @@ use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk::License::Gpl30;
-use gtk::{AboutDialogBuilder, Dialog, DialogFlags, ResponseType};
+use gtk::{AboutDialogBuilder, Dialog, DialogFlags, DrawingArea, ResponseType};
 use phys_plotter::data::TwoVarDataSet;
-use phys_plotter::plot::plot_gnuplot;
+use phys_plotter::plot;
 use phys_plotter::save_format::PhysPlotterFile;
+use plotters_cairo::CairoBackend;
 use serde_json::from_reader;
 use std::cell::RefCell;
 use std::convert::TryInto;
@@ -95,28 +96,90 @@ macro_rules! parse_state_float_or_return {
     };
 }
 
-fn do_generate_plot(state: &UIState) -> Result<(), Box<dyn std::error::Error>> {
+/// Error type while plotting
+enum PlotError {
+    EmptyData,
+}
+
+macro_rules! impl_fmt_plot_error {
+    ($item: ident) => {
+        impl std::fmt::$item for PlotError {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    PlotError::EmptyData => write!(f, "Dataset cannot be empty"),
+                }
+            }
+        }
+    };
+}
+
+impl_fmt_plot_error!(Debug);
+impl_fmt_plot_error!(Display);
+
+impl std::error::Error for PlotError {}
+
+fn do_generate_plot(
+    application: &gtk::Application,
+    window: &gtk::ApplicationWindow,
+    state: &Rc<RefCell<UIState>>,
+) -> Result<(), Box<dyn std::error::Error>> {
     // Get the range of the dataset text
-    let range = state.dataset.get_bounds();
-    let dataset_text = state
+    let state_local = state.borrow();
+    let range = state_local.dataset.get_bounds();
+    let dataset_text = state_local
         .dataset
         .get_text(&range.0, &range.1, true)
         .unwrap_or_else(|| glib::GString::from(""));
     // Construct dataset from the input
     let dataset = TwoVarDataSet::from_string(
         dataset_text.as_str(),
-        parse_state_float_or_return!(state.default_x_uncertainty),
-        parse_state_float_or_return!(state.default_y_uncertainty),
+        parse_state_float_or_return!(state_local.default_x_uncertainty),
+        parse_state_float_or_return!(state_local.default_y_uncertainty),
     )?;
+    // Empty values can crash some backends
+    if dataset.is_empty() {
+        return Err(Box::new(PlotError::EmptyData));
+    }
+    // Extract information here first
+    let title = state_local.title.get_text();
+    let x_label = state_local.x_label.get_text();
+    let y_label = state_local.y_label.get_text();
     // Call plotting backend
-    // TODO: Regard selected backend
-    plot_gnuplot(
-        state.title.get_text().as_str(),
-        state.x_label.get_text().as_str(),
-        state.y_label.get_text().as_str(),
-        dataset,
-        None,
-    )?;
+    match state_local.backend_name.get_text().as_str() {
+        "gnuplot" => plot::plot_gnuplot(&title, &x_label, &y_label, &dataset, None)?,
+        "plotters" => {
+            // Create a new window for drawing
+            let plot_window = gtk::Window::new(gtk::WindowType::Toplevel);
+            application.add_window(&plot_window);
+            plot_window.set_title("Plotters Canva");
+            plot_window.set_default_size(960, 540);
+
+            // Create cairo drawing area
+            let drawing_area = Box::new(DrawingArea::new)();
+            drawing_area.connect_draw(clone!(@weak window, @weak plot_window => @default-return Inhibit(false), move |_, ctx| {
+                let backend = CairoBackend::new(ctx, (960, 540)).unwrap();
+                unwrap_result_or_error_return!(
+                    plot::plot_plotters(
+                        &title,
+                        &x_label,
+                        &y_label,
+                        &dataset,
+                        backend
+                    ),
+                    &window,
+                    "Failed to open plot",
+                    {
+                        plot_window.close();
+                        Inhibit(false)
+                    }
+                );
+                Inhibit(false)
+            }));
+            plot_window.add(&drawing_area);
+            plot_window.show_all();
+        }
+        _ => (),
+    };
     Ok(())
 }
 
@@ -127,14 +190,16 @@ fn generate_plot(
     state: &Rc<RefCell<UIState>>,
 ) {
     let dialog = gio::SimpleAction::new("plot", None);
-    dialog.connect_activate(clone!(@weak window, @strong state => move |_, _| {
-        unwrap_result_or_error_return!(
-            do_generate_plot(&state.borrow()),
-            &window,
-            "Failed to open plot",
-            {}
-        );
-    }));
+    dialog.connect_activate(
+        clone!(@weak application, @weak window, @strong state => move |_, _| {
+            unwrap_result_or_error_return!(
+                do_generate_plot(&application, &window, &state),
+                &window,
+                "Failed to open plot",
+                {}
+            );
+        }),
+    );
     application.add_action(&dialog);
 }
 

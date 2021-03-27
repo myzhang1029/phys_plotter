@@ -979,6 +979,7 @@ dependencies = [
  "gnuplot",
  "gtk",
  "plotters",
+ "plotters-cairo",
  "serde",
  "serde_json",
 ]
@@ -1034,6 +1035,16 @@ checksum = "59b0bdaf5194ad865c6225f5e82f5fdde700ce999d227471809551d6e0b1c557"
 dependencies = [
  "gif",
  "image 0.22.5",
+ "plotters-backend",
+]
+
+[[package]]
+name = "plotters-cairo"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92296240e13bbbddef8f67fe61b5527f6f67b7621ef9d3e376955d9a11e58861"
+dependencies = [
+ "cairo-rs",
  "plotters-backend",
 ]
 

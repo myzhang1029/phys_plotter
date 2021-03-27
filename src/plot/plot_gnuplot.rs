@@ -29,7 +29,7 @@ pub fn plot_gnuplot(
     title: &str,
     x_label: &str,
     y_label: &str,
-    data: TwoVarDataSet,
+    data: &TwoVarDataSet,
     save: Option<SaveOptions<'_>>,
 ) -> Result<(), GnuplotInitError> {
     // Extra length before min and after max

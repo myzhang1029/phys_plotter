@@ -57,15 +57,15 @@ fn about_action(application: &gtk::Application, window: &gtk::ApplicationWindow)
     application.add_action(&about);
 }
 
-/// TODO
+/// Change the backend, the state is possibly altered
 fn change_backend(
     application: &gtk::Application,
     window: &gtk::ApplicationWindow,
-    _state: &Rc<RefCell<UIState>>,
+    state: &Rc<RefCell<UIState>>,
 ) {
     // Action to change the selected backend
     let dialog = gio::SimpleAction::new("change_backend", None);
-    dialog.connect_activate(clone!(@weak window => move |_, _| {
+    dialog.connect_activate(clone!(@weak window, @strong state => move |_, _| {
         let dialog = Dialog::with_buttons(
             Some("Plotting Backend"),
             Some(&window),
@@ -75,6 +75,11 @@ fn change_backend(
                 ("Cancel", ResponseType::Cancel)
             ]
         );
+        dialog.connect_response(clone!(@strong state => move |_,resp_type| {
+            if resp_type == ResponseType::Apply {
+                //abc;
+            }
+        }));
         dialog.show_all();
         dialog.run();
         unsafe { dialog.destroy(); }
@@ -108,16 +113,17 @@ fn do_generate_plot(state: &UIState) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Generate plot image or preview
+/// Generate plot image or preview, reading the state
 fn generate_plot(application: &gtk::Application, state: &Rc<RefCell<UIState>>) {
     let dialog = gio::SimpleAction::new("plot", None);
     dialog.connect_activate(clone!(@strong state => move |_, _| {
+        /* TODO: resolve this unwrap */
         do_generate_plot(&state.borrow()).unwrap();
     }));
     application.add_action(&dialog);
 }
 
-/// Open file
+/// Open file, possibly altering the state
 fn open_file(
     application: &gtk::Application,
     window: &gtk::ApplicationWindow,
@@ -138,13 +144,17 @@ fn open_file(
             /* TODO: Resolve unwraps and expects here */
             if response == gtk::ResponseType::Ok {
                 let filename = file_chooser.get_filename().expect("Couldn't get filename");
-                let mut file = File::open(&filename).expect("Couldn't open file");
-                let reader = BufReader::new(&file);
+                let file = File::open(&filename).expect("Couldn't open file");
+                let reader = BufReader::new(file);
                 if let Ok(val) = from_reader::<_, PhysPlotterFile>(reader) {
                     state.replace(val.try_into().unwrap());
                 }
+                let mut file = File::open(&filename).expect("Couldn't open file");
                 let mut contents = String::new();
                 let _ = file.read_to_string(&mut contents);
+                let mut state = state.borrow_mut();
+                state.dataset_file = filename.display().to_string();
+                state.dataset.set_text(&contents);
             }
             file_chooser.close();
         }));

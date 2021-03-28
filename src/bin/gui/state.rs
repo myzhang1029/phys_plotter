@@ -17,13 +17,12 @@
 //  along with physics plotter.  If not, see <https://www.gnu.org/licenses/>.
 //
 
+use clap::crate_version;
 use gtk::prelude::*;
 use gtk::{EntryBuffer, TextBuffer, TextBufferBuilder};
 use phys_plotter::default_values as defv;
 use phys_plotter::save_format::PhysPlotterFile;
 use std::convert::{TryFrom, TryInto};
-use std::fs::File;
-use std::io::prelude::*;
 use std::str::FromStr;
 
 /// Available backends
@@ -82,7 +81,6 @@ impl FromStr for Backends {
 pub struct UIState {
     pub saved: bool,
     pub file_path: String,
-    pub dataset_file: String,
     pub backend: Backends,
     pub title: EntryBuffer,
     pub dataset: TextBuffer,
@@ -98,7 +96,6 @@ impl UIState {
         Self {
             saved: true,
             file_path: Default::default(),
-            dataset_file: Default::default(),
             title: EntryBuffer::new(Some(defv::TITLE)),
             dataset: TextBufferBuilder::new().build(),
             backend: Backends::from_str(defv::BACKEND).unwrap(),
@@ -109,30 +106,34 @@ impl UIState {
         }
     }
 
-    /// Save modified dataset
-    pub fn save_dataset(&self) -> Result<(), std::io::Error> {
-        let mut dataset_file = File::create(&self.dataset_file)?;
+    /// Get the value of the dataset
+    pub fn dataset_str(&self) -> String {
         let range = self.dataset.get_bounds();
-        let dataset = self.dataset.get_text(&range.0, &range.1, true);
-        if let Some(dataset) = dataset {
-            dataset_file.write_all(dataset.as_bytes())?;
+        self.dataset
+            .get_text(&range.0, &range.1, true)
+            .unwrap_or_else(|| glib::GString::from(""))
+            .to_string()
+    }
+
+    /// Save to PhysPlotterFile
+    pub fn save(&self) -> std::io::Result<()> {
+        let try_save_file: Result<PhysPlotterFile, _> = self.clone().try_into();
+        if let Ok(save_file) = try_save_file {
+            save_file.save_to(&self.file_path)
+        } else {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Cannot parse float",
+            ))
         }
-        Ok(())
     }
 
     /// Safely replace this state, ensures that the views are updated
     pub fn replace(&mut self, other: UIState) {
         self.saved = other.saved;
-        self.file_path = other.file_path;
-        self.dataset_file = other.dataset_file;
         self.title.set_text(&other.title.get_text());
-        let range = other.dataset.get_bounds();
-        self.dataset.set_text(
-            &other
-                .dataset
-                .get_text(&range.0, &range.1, true)
-                .unwrap_or_else(|| glib::GString::from("")),
-        );
+        self.dataset.set_text(&other.dataset_str());
+        self.file_path = other.file_path;
         self.backend = other.backend;
         self.x_label.set_text(&other.x_label.get_text());
         self.y_label.set_text(&other.y_label.get_text());
@@ -148,13 +149,15 @@ impl TryInto<PhysPlotterFile> for UIState {
     type Error = <f64 as FromStr>::Err;
     fn try_into(self) -> Result<PhysPlotterFile, Self::Error> {
         Ok(PhysPlotterFile {
-            title: self.file_path,
+            creator: defv::APP_ID.to_string(),
+            version: crate_version!().to_string(),
             backend_name: format!("{}", self.backend),
             x_label: self.x_label.get_text(),
             y_label: self.y_label.get_text(),
             default_x_uncertainty: self.default_x_uncertainty.get_text().parse()?,
             default_y_uncertainty: self.default_x_uncertainty.get_text().parse()?,
-            dataset_file: self.dataset_file,
+            dataset: self.dataset_str(),
+            title: self.file_path,
         })
     }
 }
@@ -163,15 +166,11 @@ impl TryInto<PhysPlotterFile> for UIState {
 impl TryFrom<PhysPlotterFile> for UIState {
     type Error = std::io::Error;
     fn try_from(that: PhysPlotterFile) -> Result<Self, Self::Error> {
-        let mut data_file = File::open(&that.dataset_file)?;
-        let mut contents = String::new();
-        data_file.read_to_string(&mut contents)?;
         Ok(Self {
             saved: true,
             file_path: Default::default(),
-            dataset_file: that.dataset_file,
             title: EntryBuffer::new(Some(defv::TITLE)),
-            dataset: TextBufferBuilder::new().build(),
+            dataset: TextBufferBuilder::new().text(&that.dataset).build(),
             backend: Backends::from_str(defv::BACKEND).unwrap(),
             x_label: EntryBuffer::new(Some(defv::X_LABEL)),
             y_label: EntryBuffer::new(Some(defv::Y_LABEL)),

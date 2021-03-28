@@ -38,7 +38,7 @@ use std::cell::RefCell;
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::{BufReader, BufWriter};
+use std::io::BufReader;
 use std::rc::Rc;
 
 fn about_action(application: &gtk::Application, window: &gtk::ApplicationWindow) {
@@ -295,68 +295,33 @@ fn generate_plot(
     application.add_action(&dialog);
 }
 
-/// Save everything without any overwrite checks. Expects both filenames to be correctly set
-fn do_save_to(state: UIState) -> std::io::Result<()> {
-    state.save_dataset()?;
-    let main_file = File::create(&state.file_path)?;
-    let writer = BufWriter::new(main_file);
-    let save_file: Result<PhysPlotterFile, _> = state.try_into();
-    if let Err(error) = save_file {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Cannot parse float: {:?}", error),
-        ));
-    }
-    serde_json::to_writer(writer, &save_file.unwrap())?;
-    Ok(())
-}
-
 /// Immediately save two files without any check
-fn save_imm(window: &gtk::ApplicationWindow, state: &Rc<RefCell<UIState>>, _check: bool) {
-    unwrap_result_or_error_return!(
-        do_save_to((*state.borrow()).clone()),
-        &window,
-        "Cannot save file",
-        {}
-    );
+fn save_imm(window: &gtk::ApplicationWindow, state: &Rc<RefCell<UIState>>) {
+    unwrap_result_or_error_return!(state.borrow().save(), &window, "Cannot save file", {});
 }
 
-macro_rules! defun_checks_save {
-    ($name: ident, $var: ident, $ok: path, $title: expr) => {
-        /// Wrapper to save dataset and project. If check is false, a new path of
-        /// the file is always asked from the used. Otherwise, if there is
-        /// recorded path, that one is used. check==false is useful for "Save As",
-        /// while true is useful for "Save". If the target exists, the user is prompted
-        /// whether to overwrite.
-        fn $name(
-            window: &gtk::ApplicationWindow,
-            state: &Rc<RefCell<UIState>>,
-            check: bool,
-        ) {
-            if !check || state.borrow().$var == String::default() {
-                disp_save_dialog(window, $title, clone!(@weak window, @strong state => move |filename| {
-                    state.borrow_mut().$var = filename.display().to_string();
-                    $ok(&window, &state, check);
-                }));
-            } else {
-                $ok(window, state, check);
-            }
-        }
-    };
-}
-
-defun_checks_save! {
-    maybe_check_main_file_save_all,
-    file_path,
-    save_imm,
-    "Save Project File"
-}
-
-defun_checks_save! {
-    maybe_check_dataset_then_main_file_save_all,
-    dataset_file,
-    maybe_check_main_file_save_all,
-    "Save Dataset File"
+/// Wrapper to save dataset and project. If check is false, a new path of
+/// the file is always asked from the used. Otherwise, if there is
+/// recorded path, that one is used. check==false is useful for "Save As",
+/// while true is useful for "Save". If the target exists, the user is prompted
+/// whether to overwrite.
+fn maybe_check_main_file_save_all(
+    window: &gtk::ApplicationWindow,
+    state: &Rc<RefCell<UIState>>,
+    check: bool,
+) {
+    if !check || state.borrow().file_path == String::default() {
+        disp_save_dialog(
+            window,
+            "Save Project File",
+            clone!(@weak window, @strong state => move |filename| {
+                state.borrow_mut().file_path = filename.display().to_string();
+                save_imm(&window, &state);
+            }),
+        );
+    } else {
+        save_imm(window, state);
+    }
 }
 
 /// Save file, saves both the dataset and the project, possibly altering the state
@@ -367,7 +332,7 @@ fn save(
 ) {
     let save = gio::SimpleAction::new("save", None);
     save.connect_activate(clone!(@weak window, @strong state => move |_, _| {
-        maybe_check_dataset_then_main_file_save_all(&window, &state, true);
+        maybe_check_main_file_save_all(&window, &state, true);
     }));
     application.add_action(&save);
 }
@@ -380,7 +345,7 @@ fn save_as(
 ) {
     let save_as = gio::SimpleAction::new("save_as", None);
     save_as.connect_activate(clone!(@weak window, @strong state => move |_, _| {
-        maybe_check_dataset_then_main_file_save_all(&window, &state, false);
+        maybe_check_main_file_save_all(&window, &state, false);
     }));
     application.add_action(&save_as);
 }
@@ -426,20 +391,20 @@ fn open_file(
                         "Couldn't parse file",
                         {file_chooser.close()}
                     );
-                        state.borrow_mut().replace(new_state);
+                    state.borrow_mut().replace(new_state);
+                    state.borrow_mut().file_path = filename.display().to_string();
+                } else {
+                    // Else treat as plain dataset text
+                    let mut file = unwrap_result_or_error_return!(
+                        File::open(&filename),
+                        &window,
+                        "Couldn't open file",
+                        {file_chooser.close()}
+                    );
+                    let mut contents = String::new();
+                    let _ = file.read_to_string(&mut contents);
+                    state.borrow_mut().dataset.set_text(&contents);
                 }
-                // Else treat as plain dataset text
-                let mut file = unwrap_result_or_error_return!(
-                    File::open(&filename),
-                    &window,
-                    "Couldn't open file",
-                    {file_chooser.close()}
-                );
-                let mut contents = String::new();
-                let _ = file.read_to_string(&mut contents);
-                let mut state = state.borrow_mut();
-                state.dataset_file = filename.display().to_string();
-                state.dataset.set_text(&contents);
             }
             file_chooser.close();
         }));

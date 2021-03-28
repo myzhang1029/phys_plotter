@@ -1,7 +1,7 @@
 [package]
 name = "phys_plotter"
 description = "Linear data regression and plotting tool"
-version = "0.1.6"
+version = "0.2.0"
 authors = ["Zhang Maiyun <myzhang1029@hotmail.com>"]
 edition = "2018"
 

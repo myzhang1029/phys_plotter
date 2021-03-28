@@ -18,14 +18,29 @@
 //
 
 use serde::{Deserialize, Serialize};
+use serde_json::to_writer;
+use std::fs::File;
+use std::io::BufWriter;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct PhysPlotterFile {
+    pub version: String,
+    pub creator: String,
     pub title: String,
     pub backend_name: String,
     pub x_label: String,
     pub y_label: String,
     pub default_x_uncertainty: f64,
     pub default_y_uncertainty: f64,
-    pub dataset_file: String,
+    pub dataset: String,
+}
+
+impl PhysPlotterFile {
+    /// Save this file
+    pub fn save_to(&self, filename: &str) -> std::io::Result<()> {
+        let file = File::create(filename)?;
+        let writer = BufWriter::new(file);
+        to_writer(writer, self)?;
+        Ok(())
+    }
 }

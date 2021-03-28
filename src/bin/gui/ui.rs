@@ -24,8 +24,8 @@ use glib::clone;
 use gtk::prelude::*;
 use gtk::Orientation::{Horizontal, Vertical};
 use gtk::{
-    Box, EntryBuilder, HeaderBarBuilder, IconSize, Image, Label, MessageDialog,
-    MessageDialogBuilder, Paned, ScrolledWindowBuilder, Separator, TextViewBuilder,
+    Box, ButtonsType, EntryBuilder, HeaderBarBuilder, IconSize, Image, Label, MessageDialog,
+    MessageDialogBuilder, Paned, ResponseType, ScrolledWindowBuilder, Separator, TextViewBuilder,
     ToolButtonBuilder, ToolItem, Toolbar,
 };
 use phys_plotter::default_values as defv;
@@ -280,4 +280,54 @@ macro_rules! unwrap_result_or_error_return {
             }
         }
     };
+}
+
+/// Display a file chooser dialog to save files, and ask for confirmation if
+/// the chosen file exists. Then call then on the file path.
+pub fn disp_save_dialog<F: Clone + 'static>(window: &gtk::ApplicationWindow, title: &str, then: F)
+where
+    F: std::ops::Fn(&std::path::Path) -> (),
+{
+    let file_chooser =
+        gtk::FileChooserDialog::new(Some(title), Some(window), gtk::FileChooserAction::Save);
+    file_chooser.add_buttons(&[
+        ("Save", gtk::ResponseType::Ok),
+        ("Cancel", gtk::ResponseType::Cancel),
+    ]);
+    file_chooser.connect_response(
+        clone!(@weak window => move |file_chooser, response| {
+            if response == gtk::ResponseType::Ok {
+                let filename = unwrap_option_or_error_return!(
+                    file_chooser.get_filename(),
+                    &window,
+                    "Couldn't get filename",
+                    {file_chooser.close()}
+                );
+                if filename.exists() {
+                    // Confirmation about whether to overwrite
+                    let dialog = MessageDialogBuilder::new()
+                        .transient_for(&window)
+                        .title("Confirmation")
+                        .text("File exists. Do you want to overwrite?")
+                        .buttons(ButtonsType::YesNo)
+                        .build();
+                    dialog.connect_response(clone!(@weak file_chooser, @strong then => move |_,resp_type| {
+                        if resp_type == ResponseType::Yes {
+                            file_chooser.close();
+                            then(&filename);
+                        }
+                    }));
+                    dialog.show_all();
+                    dialog.run();
+                    unsafe { dialog.destroy();}
+                } else {
+                    file_chooser.close();
+                    then(&filename);
+                }
+            } else {
+                file_chooser.close();
+            }
+        }),
+    );
+    file_chooser.show_all();
 }

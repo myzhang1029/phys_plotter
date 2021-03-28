@@ -18,7 +18,7 @@
 //
 
 use crate::state::{Backends, UIState};
-use crate::ui::create_error_popup;
+use crate::ui::{create_error_popup, disp_save_dialog};
 use crate::{unwrap_option_or_error_return, unwrap_result_or_error_return};
 use clap::crate_version;
 use gio::prelude::*;
@@ -26,12 +26,13 @@ use glib::clone;
 use gtk::prelude::*;
 use gtk::License::Gpl30;
 use gtk::{
-    AboutDialogBuilder, ButtonsType, DialogBuilder, DrawingArea, MessageDialogBuilder, RadioButton,
-    ResponseType,
+    AboutDialogBuilder, Button, ButtonsType, DialogBuilder, DrawingArea, MessageDialogBuilder,
+    Orientation, RadioButton, ResponseType,
 };
 use phys_plotter::data::TwoVarDataSet;
 use phys_plotter::plot;
 use phys_plotter::save_format::PhysPlotterFile;
+use plotters::prelude::*;
 use plotters_cairo::CairoBackend;
 use std::cell::RefCell;
 use std::convert::TryInto;
@@ -135,6 +136,59 @@ impl_fmt_plot_error!(Display);
 
 impl std::error::Error for PlotError {}
 
+/// Image formats that can be exported
+#[derive(Debug, Copy, Clone)]
+enum ImageFormat {
+    SVG,
+    PNG,
+}
+
+fn save_image(
+    window: &gtk::ApplicationWindow,
+    format: ImageFormat,
+    title: &str,
+    x_label: &str,
+    y_label: &str,
+    dataset: &TwoVarDataSet,
+) {
+    // These variables must be owned in order for clone to succeed
+    let title = title.to_string();
+    let x_label = x_label.to_string();
+    let y_label = y_label.to_string();
+    disp_save_dialog(
+        &window,
+        "Save Image to",
+        clone!(@weak window, @strong title, @strong x_label, @strong y_label, @strong dataset => move |filename| {
+            match format {
+                ImageFormat::SVG => unwrap_result_or_error_return!(
+                    plot::plot_plotters(
+                        &title,
+                        &x_label,
+                        &y_label,
+                        &dataset,
+                        SVGBackend::new(filename, (960, 540))
+                    ),
+                    &window,
+                    "Failed to open plot",
+                    {}
+                ),
+                ImageFormat::PNG => unwrap_result_or_error_return!(
+                    plot::plot_plotters(
+                        &title,
+                        &x_label,
+                        &y_label,
+                        &dataset,
+                        BitMapBackend::new(filename, (960, 540))
+                    ),
+                    &window,
+                    "Failed to open plot",
+                    {}
+                ),
+            };
+        }),
+    );
+}
+
 fn do_generate_plot(
     application: &gtk::Application,
     window: &gtk::ApplicationWindow,
@@ -169,11 +223,15 @@ fn do_generate_plot(
             let plot_window = gtk::Window::new(gtk::WindowType::Toplevel);
             application.add_window(&plot_window);
             plot_window.set_title("Plotters Canva");
-            plot_window.set_default_size(960, 540);
+            plot_window.set_default_size(960, 584);
 
+            let container = gtk::Box::new(Orientation::Vertical, 5);
             // Create cairo drawing area
-            let drawing_area = Box::new(DrawingArea::new)();
-            drawing_area.connect_draw(clone!(@weak window, @weak plot_window => @default-return Inhibit(false), move |_, ctx| {
+            let drawing_area = DrawingArea::new();
+            // The drawing area has to expand or button will take all the space
+            drawing_area.set_vexpand(true);
+            container.add(&drawing_area);
+            drawing_area.connect_draw(clone!(@weak window, @weak plot_window, @strong title, @strong x_label, @strong y_label, @strong dataset => @default-return Inhibit(false), move |_, ctx| {
                 let backend = CairoBackend::new(ctx, (960, 540)).unwrap();
                 unwrap_result_or_error_return!(
                     plot::plot_plotters(
@@ -192,7 +250,25 @@ fn do_generate_plot(
                 );
                 Inhibit(false)
             }));
-            plot_window.add(&drawing_area);
+            // Save options
+            let button_area = gtk::Box::new(Orientation::Horizontal, 5);
+            let button_png = Button::with_label("Save to PNG");
+            button_png.connect_clicked(clone!(@weak window, @strong title, @strong x_label, @strong y_label, @strong dataset => move |_| {
+                save_image(&window, ImageFormat::PNG, &title, &x_label, &y_label, &dataset);
+            }));
+            let button_svg = Button::with_label("Save to SVG");
+            button_svg.connect_clicked(clone!(@weak window, @strong title, @strong x_label, @strong y_label, @strong dataset => move |_| {
+                save_image(&window, ImageFormat::SVG, &title, &x_label, &y_label, &dataset);
+            }));
+            let button_close = Button::with_label("Close");
+            button_close.connect_clicked(clone!(@weak plot_window => move |_| {
+                plot_window.close();
+            }));
+            button_area.add(&button_png);
+            button_area.add(&button_svg);
+            button_area.add(&button_close);
+            container.add(&button_area);
+            plot_window.add(&container);
             plot_window.show_all();
         }
     };
@@ -245,9 +321,8 @@ fn save_imm(window: &gtk::ApplicationWindow, state: &Rc<RefCell<UIState>>, _chec
     );
 }
 
-// These macros are very dirty hacks
 macro_rules! defun_checks_save {
-    ($name: ident, $var: ident, $ok: path) => {
+    ($name: ident, $var: ident, $ok: path, $title: expr) => {
         /// Wrapper to save dataset and project. If check is false, a new path of
         /// the file is always asked from the used. Otherwise, if there is
         /// recorded path, that one is used. check==false is useful for "Save As",
@@ -259,53 +334,10 @@ macro_rules! defun_checks_save {
             check: bool,
         ) {
             if !check || state.borrow().$var == String::default() {
-                let file_chooser = gtk::FileChooserDialog::new(
-                    Some("Save Project File"),
-                    Some(window),
-                    gtk::FileChooserAction::Save,
-                );
-                file_chooser.add_buttons(&[
-                    ("Save", gtk::ResponseType::Ok),
-                    ("Cancel", gtk::ResponseType::Cancel),
-                ]);
-                file_chooser.connect_response(
-                    clone!(@weak window, @strong state => move |file_chooser, response| {
-                        if response == gtk::ResponseType::Ok {
-                            let filename = unwrap_option_or_error_return!(
-                                file_chooser.get_filename(),
-                                &window,
-                                "Couldn't get filename",
-                                {file_chooser.close()}
-                            );
-                            if filename.exists() {
-                                // Confirmation about whether to overwrite
-                                let dialog = MessageDialogBuilder::new()
-                                    .transient_for(&window)
-                                    .title("Confirmation")
-                                    .text("File exists. Do you want to overwrite?")
-                                    .buttons(ButtonsType::YesNo)
-                                    .build();
-                                dialog.connect_response(clone!(@weak window, @weak file_chooser, @strong state => move |_,resp_type| {
-                                    if resp_type == ResponseType::Yes {
-                                        state.borrow_mut().$var = filename.display().to_string();
-                                        $ok(&window, &state, check);
-                                        file_chooser.close();
-                                    }
-                                }));
-                                dialog.show_all();
-                                dialog.run();
-                                unsafe { dialog.destroy();}
-                            } else {
-                                state.borrow_mut().$var = filename.display().to_string();
-                                file_chooser.close();
-                                $ok(&window, &state, check);
-                            }
-                        } else {
-                            file_chooser.close();
-                        }
-                    }),
-                );
-                file_chooser.show_all();
+                disp_save_dialog(window, $title, clone!(@weak window, @strong state => move |filename| {
+                    state.borrow_mut().$var = filename.display().to_string();
+                    $ok(&window, &state, check);
+                }));
             } else {
                 $ok(window, state, check);
             }
@@ -316,13 +348,15 @@ macro_rules! defun_checks_save {
 defun_checks_save! {
     maybe_check_main_file_save_all,
     file_path,
-    save_imm
+    save_imm,
+    "Save Project File"
 }
 
 defun_checks_save! {
     maybe_check_dataset_then_main_file_save_all,
     dataset_file,
-    maybe_check_main_file_save_all
+    maybe_check_main_file_save_all,
+    "Save Dataset File"
 }
 
 /// Save file, saves both the dataset and the project, possibly altering the state

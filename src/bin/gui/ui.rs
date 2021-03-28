@@ -24,8 +24,8 @@ use glib::clone;
 use gtk::prelude::*;
 use gtk::Orientation::{Horizontal, Vertical};
 use gtk::{
-    Box, ButtonsType, EntryBuilder, HeaderBarBuilder, IconSize, Image, Label, MessageDialog,
-    MessageDialogBuilder, Paned, ResponseType, ScrolledWindowBuilder, Separator, TextViewBuilder,
+    Box, EntryBuilder, HeaderBarBuilder, IconSize, Image, Label, MessageDialog,
+    MessageDialogBuilder, Paned, ScrolledWindowBuilder, Separator, TextViewBuilder,
     ToolButtonBuilder, ToolItem, Toolbar,
 };
 use phys_plotter::default_values as defv;
@@ -294,40 +294,20 @@ where
         ("Save", gtk::ResponseType::Ok),
         ("Cancel", gtk::ResponseType::Cancel),
     ]);
-    file_chooser.connect_response(
-        clone!(@weak window => move |file_chooser, response| {
-            if response == gtk::ResponseType::Ok {
-                let filename = unwrap_option_or_error_return!(
-                    file_chooser.get_filename(),
-                    &window,
-                    "Couldn't get filename",
-                    {file_chooser.close()}
-                );
-                if filename.exists() {
-                    // Confirmation about whether to overwrite
-                    let dialog = MessageDialogBuilder::new()
-                        .transient_for(&window)
-                        .title("Confirmation")
-                        .text("File exists. Do you want to overwrite?")
-                        .buttons(ButtonsType::YesNo)
-                        .build();
-                    dialog.connect_response(clone!(@weak file_chooser, @strong then => move |_,resp_type| {
-                        if resp_type == ResponseType::Yes {
-                            file_chooser.close();
-                            then(&filename);
-                        }
-                    }));
-                    dialog.show_all();
-                    dialog.run();
-                    unsafe { dialog.destroy();}
-                } else {
-                    file_chooser.close();
-                    then(&filename);
-                }
-            } else {
-                file_chooser.close();
-            }
-        }),
-    );
+    file_chooser.set_do_overwrite_confirmation(true);
+    file_chooser.connect_response(clone!(@weak window => move |file_chooser, response| {
+        if response == gtk::ResponseType::Ok {
+            let filename = unwrap_option_or_error_return!(
+                file_chooser.get_filename(),
+                &window,
+                "Couldn't get filename",
+                {file_chooser.close()}
+            );
+            file_chooser.close();
+            then(&filename);
+        } else {
+            file_chooser.close();
+        }
+    }));
     file_chooser.show_all();
 }

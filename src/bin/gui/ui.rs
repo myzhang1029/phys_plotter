@@ -20,12 +20,13 @@
 use crate::actions::register_actions;
 use crate::menu::build_menu;
 use crate::state::UIState;
+use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk::Orientation::{Horizontal, Vertical};
 use gtk::{
-    Box, EntryBuilder, HeaderBarBuilder, IconSize, Image, Label, MessageDialog,
-    MessageDialogBuilder, Paned, ScrolledWindowBuilder, Separator, TextViewBuilder,
+    Box, ButtonsType, EntryBuilder, HeaderBarBuilder, IconSize, Image, Label, MessageDialog,
+    MessageDialogBuilder, Paned, ResponseType, ScrolledWindowBuilder, Separator, TextViewBuilder,
     ToolButtonBuilder, ToolItem, Toolbar,
 };
 use phys_plotter::default_values as defv;
@@ -127,12 +128,17 @@ macro_rules! unsave {
 }
 macro_rules! unsave_entry {
     ($item: expr, $state: ident) => {
-        $item.connect_changed(clone!(@strong $state => move |_| unsave!($state)))
+        $item.connect_changed(clone!(@strong $state => move |_| unsave!($state)));
     };
 }
 macro_rules! unsave_text {
     ($item: expr, $state: ident) => {
-        $item.connect_preedit_changed(clone!(@strong $state => move |_,_| unsave!($state)))
+        $item.connect_preedit_changed(clone!(@strong $state => move |_,_| unsave!($state)));
+        $item.connect_backspace(clone!(@strong $state => move |_| unsave!($state)));
+        $item.connect_cut_clipboard(clone!(@strong $state => move |_| unsave!($state)));
+        $item.connect_delete_from_cursor(clone!(@strong $state => move |_,_,_| unsave!($state)));
+        $item.connect_insert_at_cursor(clone!(@strong $state => move |_,_| unsave!($state)));
+        $item.connect_paste_clipboard(clone!(@strong $state => move |_| unsave!($state)));
     };
 }
 
@@ -227,6 +233,21 @@ pub fn app(application: &gtk::Application) {
     });*/
 
     register_actions(application, &window, &ui_state);
+    window.connect_delete_event(clone!(@weak application, @weak window, @strong ui_state => @default-return Inhibit(false), move |_,_| {
+        if ui_state.borrow().saved {
+            Inhibit(false)
+        } else {
+            // Not saved, ask if save
+            disp_not_saved_dialog(&window, clone!(@weak application, @weak window, @strong ui_state => move || {
+                // Do exit
+                // Since I cannot return Inhibit(false) here, I will pretend it
+                // to be saved, and reinitiate this signal
+                ui_state.borrow_mut().saved = true;
+                application.quit();
+            }));
+            Inhibit(true)
+        }
+    }));
     // Make all widgets visible.
     window.show_all();
 }
@@ -310,4 +331,27 @@ where
         }
     }));
     file_chooser.show_all();
+}
+
+/// Display a dialog asking whether to continue without saving
+pub fn disp_not_saved_dialog<F: Clone + 'static>(window: &gtk::ApplicationWindow, yes: F)
+where
+    F: std::ops::Fn() -> (),
+{
+    let dialog = MessageDialogBuilder::new()
+        .transient_for(window)
+        .title("Confirmation")
+        .text("File modified but not saved, proceed?")
+        .buttons(ButtonsType::YesNo)
+        .build();
+    dialog.connect_response(move |_, resp_type| {
+        if resp_type == ResponseType::Yes {
+            yes();
+        }
+    });
+    dialog.show_all();
+    dialog.run();
+    unsafe {
+        dialog.destroy();
+    }
 }

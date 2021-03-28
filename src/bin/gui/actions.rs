@@ -18,7 +18,7 @@
 //
 
 use crate::state::{Backends, UIState};
-use crate::ui::{create_error_popup, disp_save_dialog};
+use crate::ui::{create_error_popup, disp_not_saved_dialog, disp_save_dialog};
 use crate::{unwrap_option_or_error_return, unwrap_result_or_error_return};
 use clap::crate_version;
 use gio::prelude::*;
@@ -26,8 +26,7 @@ use glib::clone;
 use gtk::prelude::*;
 use gtk::License::Gpl30;
 use gtk::{
-    AboutDialogBuilder, Button, ButtonsType, DialogBuilder, DrawingArea, MessageDialogBuilder,
-    Orientation, RadioButton, ResponseType,
+    AboutDialogBuilder, Button, DialogBuilder, DrawingArea, Orientation, RadioButton, ResponseType,
 };
 use phys_plotter::data::TwoVarDataSet;
 use phys_plotter::plot;
@@ -89,12 +88,14 @@ fn change_backend(
         dialog.add_action_widget(&radiobutton_1, ResponseType::Other(1));
         dialog.add_action_widget(&radiobutton_2, ResponseType::Other(2));
         dialog.connect_response(clone!(@strong state => move |_,resp_type| {
+            let mut borrowed = state.borrow_mut();
+            borrowed.saved = false;
             match resp_type {
                 ResponseType::Other(1) => {
-                    state.borrow_mut().backend = Backends::Plotters
+                    borrowed.backend = Backends::Plotters
                 },
                 ResponseType::Other(2) => {
-                    state.borrow_mut().backend =Backends::Gnuplot
+                    borrowed.backend =Backends::Gnuplot
                 },
                 _ => ()
             }
@@ -316,10 +317,12 @@ fn maybe_check_main_file_save_all(
             clone!(@weak window, @strong state => move |filename| {
                 state.borrow_mut().file_path = filename.display().to_string();
                 save_imm(&window, &state);
+                state.borrow_mut().saved = true;
             }),
         );
     } else {
         save_imm(window, state);
+        state.borrow_mut().saved = true;
     }
 }
 
@@ -349,25 +352,20 @@ fn save_as(
     application.add_action(&save_as);
 }
 
-/// Open file, possibly altering the state
-fn open_file(
-    application: &gtk::Application,
-    window: &gtk::ApplicationWindow,
-    state: &Rc<RefCell<UIState>>,
-) {
-    let open_file = gio::SimpleAction::new("open", None);
-    open_file.connect_activate(clone!(@weak window, @strong state => move |_, _| {
-        // Use file chooser to choose file
-        let file_chooser = gtk::FileChooserDialog::new(
-            Some("Open File"),
-            Some(&window),
-            gtk::FileChooserAction::Open,
-        );
-        file_chooser.add_buttons(&[
-            ("Open", gtk::ResponseType::Ok),
-            ("Cancel", gtk::ResponseType::Cancel),
-        ]);
-        file_chooser.connect_response(clone!(@weak window, @strong state => move |file_chooser, response| {
+/// Display FileChooser and open a new file
+fn do_open_file(window: &gtk::ApplicationWindow, state: &Rc<RefCell<UIState>>) {
+    // Use file chooser to choose file
+    let file_chooser = gtk::FileChooserDialog::new(
+        Some("Open File"),
+        Some(window),
+        gtk::FileChooserAction::Open,
+    );
+    file_chooser.add_buttons(&[
+        ("Open", gtk::ResponseType::Ok),
+        ("Cancel", gtk::ResponseType::Cancel),
+    ]);
+    file_chooser.connect_response(
+        clone!(@weak window, @strong state => move |file_chooser, response| {
             if response == gtk::ResponseType::Ok {
                 let filename = unwrap_option_or_error_return!(
                     file_chooser.get_filename(),
@@ -399,9 +397,27 @@ fn open_file(
                 }
             }
             file_chooser.close();
-        }));
+        }),
+    );
+    file_chooser.show_all();
+}
 
-        file_chooser.show_all();
+/// Open file, possibly altering the state
+fn open_file(
+    application: &gtk::Application,
+    window: &gtk::ApplicationWindow,
+    state: &Rc<RefCell<UIState>>,
+) {
+    let open_file = gio::SimpleAction::new("open", None);
+    open_file.connect_activate(clone!(@weak window, @strong state => move |_, _| {
+        if state.borrow().saved {
+            do_open_file(&window, &state);
+        } else {
+            // Not saved, ask if save
+            disp_not_saved_dialog(&window, clone!(@weak window, @strong state => move || {
+                do_open_file(&window, &state);
+            }));
+        }
     }));
     application.add_action(&open_file);
 }
@@ -419,21 +435,10 @@ fn new_plot(
             state.borrow_mut().replace(new_state);
         } else {
             // Not saved, ask if save
-            let dialog = MessageDialogBuilder::new()
-                .transient_for(&window)
-                .title("Confirmation")
-                .text("File modified but not saved, proceed?")
-                .buttons(ButtonsType::YesNo)
-                .build();
-            dialog.connect_response(clone!(@strong state => move |_,resp_type| {
-                if resp_type == ResponseType::Yes {
-                        let new_state = UIState::new();
-                        state.borrow_mut().replace(new_state);
-                }
+            disp_not_saved_dialog(&window, clone!(@strong state => move || {
+                let new_state = UIState::new();
+                state.borrow_mut().replace(new_state);
             }));
-            dialog.show_all();
-            dialog.run();
-            unsafe { dialog.destroy(); }
         }
     }));
     application.add_action(&new_file);

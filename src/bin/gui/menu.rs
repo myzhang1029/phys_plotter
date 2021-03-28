@@ -25,7 +25,7 @@ pub fn build_menu(application: &gtk::Application) {
 
     // Application menu
     let menu = gio::Menu::new();
-    menu.append(Some("_About"), Some("app.about"));
+    menu.append(Some("About"), Some("app.about"));
     menu.append(Some("_Quit"), Some("app.quit"));
     application.set_app_menu(Some(&menu));
 

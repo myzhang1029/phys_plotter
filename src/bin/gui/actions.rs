@@ -466,7 +466,6 @@ pub fn register_actions(
     open_file(application, window, &state);
     new_plot(application, window, &state);
     application.set_accels_for_action("app.quit", &["<Primary>Q"]);
-    application.set_accels_for_action("app.about", &["<Primary>A"]);
     application.set_accels_for_action("app.change_backend", &["<Primary>B"]);
     application.set_accels_for_action("app.plot", &["<Primary>G"]);
     application.set_accels_for_action("app.save", &["<Primary>S"]);

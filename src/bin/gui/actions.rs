@@ -38,7 +38,6 @@ use std::cell::RefCell;
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::BufReader;
 use std::rc::Rc;
 
 fn about_action(application: &gtk::Application, window: &gtk::ApplicationWindow) {
@@ -376,15 +375,8 @@ fn open_file(
                     "Couldn't get filename",
                     {file_chooser.close()}
                 );
-                let file = unwrap_result_or_error_return!(
-                    File::open(&filename),
-                    &window,
-                    "Couldn't open file",
-                    {file_chooser.close()}
-                );
                 // First try to parse it as saved file
-                let reader = BufReader::new(file);
-                if let Ok(val) = serde_json::from_reader::<_, PhysPlotterFile>(reader) {
+                if let Ok(val) = PhysPlotterFile::from_file(&filename) {
                     let new_state: UIState = unwrap_result_or_error_return!(
                         val.try_into(),
                         &window,

@@ -22,6 +22,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::{Error, ErrorKind};
 use std::ops::{Deref, DerefMut};
+use std::path::Path;
 
 /// Parse error types
 pub enum ParseError {
@@ -135,7 +136,7 @@ impl TwoVarDataSet {
     /// filename: Path to the file
     /// dux: Default x uncertainty
     /// duy: Default y uncertainty
-    pub fn from_file(filename: &str, dux: f64, duy: f64) -> Result<Self, Error> {
+    pub fn from_file<P: AsRef<Path>>(filename: P, dux: f64, duy: f64) -> Result<Self, Error> {
         // Read the data file
         let mut data_file = File::open(filename)?;
         let mut contents = String::new();

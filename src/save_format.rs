@@ -18,9 +18,10 @@
 //
 
 use serde::{Deserialize, Serialize};
-use serde_json::to_writer;
+use serde_json::{from_reader, to_writer};
 use std::fs::File;
-use std::io::BufWriter;
+use std::io::{BufReader, BufWriter};
+use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct PhysPlotterFile {
@@ -42,5 +43,19 @@ impl PhysPlotterFile {
         let writer = BufWriter::new(file);
         to_writer(writer, self)?;
         Ok(())
+    }
+
+    /// Open filename and try to parse it as PhysPlotterFile
+    pub fn from_file<P: AsRef<Path>>(filename: P) -> std::io::Result<Self> {
+        let file = File::open(&filename)?;
+        let reader = BufReader::new(file);
+        if let Ok(result) = from_reader::<_, PhysPlotterFile>(reader) {
+            Ok(result)
+        } else {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Not a valid PhysPlotterFile",
+            ))
+        }
     }
 }

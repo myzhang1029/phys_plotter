@@ -21,6 +21,7 @@ use clap::{crate_version, App, Arg};
 use phys_plotter::data::TwoVarDataSet;
 use phys_plotter::default_values as defv;
 use phys_plotter::plot;
+use phys_plotter::save_format::PhysPlotterFile;
 use plotters::prelude::*;
 use std::process::exit;
 
@@ -49,6 +50,11 @@ fn main() {
             .help("Sets the data file to parse")
             .required(true)
             .index(1))
+        .arg(Arg::with_name("psp_file")
+            .help("Indicates that aphysics plotter saved file is used as DATASET_FILE")
+            .short("p")
+            .long("psp-file")
+            .conflicts_with_all(&["title", "x_label", "y_label", "dux", "duy", "backend"]))
         .arg(Arg::with_name("title")
             .short("t")
             .long("title")
@@ -93,6 +99,8 @@ fn main() {
             .short("s")
             .long("save-to")
             .value_name("PATH")
+            .requires("width")
+            .requires("height")
             .required_if("backend", "plotters")
             .help("Saves the graph to PATH instead of showing it"))
         .arg(Arg::with_name("width")
@@ -110,20 +118,43 @@ fn main() {
             .validator(size_validator)
             .help("Sets the image height in pixels (recommended: 540)"))
         .get_matches();
-    let dataset = TwoVarDataSet::from_file(
-        &matches.value_of("DATASET_FILE").unwrap(),
-        matches.value_of("dux").unwrap().parse().unwrap(),
-        matches.value_of("dux").unwrap().parse().unwrap(),
-    );
+
+    let (dataset, title, x_label, y_label) = if matches.is_present("psp_file") {
+        // Parse as PhysPlotterFile
+        let save_file =
+            PhysPlotterFile::from_file(&matches.value_of("DATASET_FILE").unwrap()).unwrap();
+        (
+            TwoVarDataSet::from_string(
+                &save_file.dataset,
+                save_file.default_x_uncertainty,
+                save_file.default_y_uncertainty,
+            ),
+            save_file.title,
+            save_file.x_label,
+            save_file.y_label,
+        )
+    } else {
+        // Parse as plain dataset
+        (
+            TwoVarDataSet::from_file(
+                &matches.value_of("DATASET_FILE").unwrap(),
+                matches.value_of("dux").unwrap().parse().unwrap(),
+                matches.value_of("dux").unwrap().parse().unwrap(),
+            ),
+            matches.value_of("title").unwrap().to_string(),
+            matches.value_of("x_label").unwrap().to_string(),
+            matches.value_of("y_label").unwrap().to_string(),
+        )
+    };
     if let Err(error) = dataset {
         eprintln!("Error: {}", error);
         exit(2);
     }
     match matches.value_of("backend").unwrap() {
         "plotters" => plot::plot_plotters(
-            matches.value_of("title").unwrap(),
-            matches.value_of("x_label").unwrap(),
-            matches.value_of("y_label").unwrap(),
+            &title,
+            &x_label,
+            &y_label,
             &dataset.unwrap(),
             // The clap rule will ensure that this argument exists
             BitMapBackend::new(
@@ -136,9 +167,9 @@ fn main() {
         )
         .unwrap(),
         "gnuplot" => plot::plot_gnuplot(
-            matches.value_of("title").unwrap(),
-            matches.value_of("x_label").unwrap(),
-            matches.value_of("y_label").unwrap(),
+            &title,
+            &x_label,
+            &y_label,
             &dataset.unwrap(),
             match matches.value_of("out_file") {
                 Some(path) => Some(plot::SaveOptions {

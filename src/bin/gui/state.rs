@@ -78,7 +78,7 @@ impl FromStr for Backends {
 
 /// Struct for GUI app UI state
 #[derive(Debug, Clone)]
-pub struct UIState {
+pub struct UiState {
     pub saved: bool,
     pub file_path: String,
     pub backend: Backends,
@@ -90,7 +90,7 @@ pub struct UIState {
     pub default_y_uncertainty: EntryBuffer,
 }
 
-impl UIState {
+impl UiState {
     /// Create a new state
     pub fn new() -> Self {
         Self {
@@ -129,7 +129,7 @@ impl UIState {
     }
 
     /// Safely replace this state, ensures that the views are updated
-    pub fn replace(&mut self, other: UIState) {
+    pub fn replace(&mut self, other: UiState) {
         self.saved = other.saved;
         self.title.set_text(&other.title.get_text());
         self.dataset.set_text(&other.dataset_str());
@@ -145,7 +145,7 @@ impl UIState {
 }
 
 /// Create save file from the state
-impl TryInto<PhysPlotterFile> for UIState {
+impl TryInto<PhysPlotterFile> for UiState {
     type Error = <f64 as FromStr>::Err;
     fn try_into(self) -> Result<PhysPlotterFile, Self::Error> {
         Ok(PhysPlotterFile {
@@ -163,7 +163,7 @@ impl TryInto<PhysPlotterFile> for UIState {
 }
 
 /// Load saved file
-impl TryFrom<PhysPlotterFile> for UIState {
+impl TryFrom<PhysPlotterFile> for UiState {
     type Error = BackendsFromStrError;
     fn try_from(that: PhysPlotterFile) -> Result<Self, Self::Error> {
         Ok(Self {

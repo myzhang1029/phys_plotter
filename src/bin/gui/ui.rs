@@ -19,7 +19,7 @@
 
 use crate::actions::register_actions;
 use crate::menu::build_menu;
-use crate::state::UIState;
+use crate::state::UiState;
 use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
@@ -143,7 +143,7 @@ macro_rules! unsave_text {
 }
 
 /// Draw the properties area, on the left of the editing area
-fn draw_properties_area(state: &Rc<RefCell<UIState>>) -> Box {
+fn draw_properties_area(state: &Rc<RefCell<UiState>>) -> Box {
     let state_borrowed = state.borrow();
     let properties_area = Box::new(Vertical, 1);
     let properties_area_title = HeaderBarBuilder::new().title("Properties").build();
@@ -177,7 +177,7 @@ fn draw_properties_area(state: &Rc<RefCell<UIState>>) -> Box {
 }
 
 /// Draw the editing area
-fn draw_editing_area(state: &Rc<RefCell<UIState>>) -> Paned {
+fn draw_editing_area(state: &Rc<RefCell<UiState>>) -> Paned {
     let editing_area = Paned::new(Horizontal);
     let properties_area = draw_properties_area(state);
     let text_area = Box::new(Vertical, 10);
@@ -205,7 +205,7 @@ fn draw_editing_area(state: &Rc<RefCell<UIState>>) -> Paned {
 
 /// Create the main window
 pub fn app(application: &gtk::Application) {
-    let ui_state = Rc::new(RefCell::new(UIState::new()));
+    let ui_state = Rc::new(RefCell::new(UiState::new()));
     // Main window
     let window = gtk::ApplicationWindow::new(application);
     // Set the size and the title

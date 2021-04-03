@@ -17,7 +17,7 @@
 //  along with physics plotter.  If not, see <https://www.gnu.org/licenses/>.
 //
 
-use crate::state::{Backends, UIState};
+use crate::state::{Backends, UiState};
 use crate::ui::{create_error_popup, disp_not_saved_dialog, disp_save_dialog};
 use crate::{unwrap_option_or_error_return, unwrap_result_or_error_return};
 use clap::crate_version;
@@ -65,7 +65,7 @@ fn about_action(application: &gtk::Application, window: &gtk::ApplicationWindow)
 fn change_backend(
     application: &gtk::Application,
     window: &gtk::ApplicationWindow,
-    state: &Rc<RefCell<UIState>>,
+    state: &Rc<RefCell<UiState>>,
 ) {
     // Action to change the selected backend
     let dialog = gio::SimpleAction::new("change_backend", None);
@@ -139,8 +139,8 @@ impl std::error::Error for PlotError {}
 /// Image formats that can be exported
 #[derive(Debug, Copy, Clone)]
 enum ImageFormat {
-    SVG,
-    PNG,
+    Svg,
+    Png,
 }
 
 fn save_image(
@@ -160,7 +160,7 @@ fn save_image(
         "Save Image to",
         clone!(@weak window, @strong title, @strong x_label, @strong y_label, @strong dataset => move |filename| {
             match format {
-                ImageFormat::SVG => unwrap_result_or_error_return!(
+                ImageFormat::Svg => unwrap_result_or_error_return!(
                     plot::plot_plotters(
                         &title,
                         &x_label,
@@ -172,7 +172,7 @@ fn save_image(
                     "Failed to open plot",
                     {}
                 ),
-                ImageFormat::PNG => unwrap_result_or_error_return!(
+                ImageFormat::Png => unwrap_result_or_error_return!(
                     plot::plot_plotters(
                         &title,
                         &x_label,
@@ -192,7 +192,7 @@ fn save_image(
 fn do_generate_plot(
     application: &gtk::Application,
     window: &gtk::ApplicationWindow,
-    state: &Rc<RefCell<UIState>>,
+    state: &Rc<RefCell<UiState>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Get the range of the dataset text
     let state_local = state.borrow();
@@ -254,11 +254,11 @@ fn do_generate_plot(
             let button_area = gtk::Box::new(Orientation::Horizontal, 5);
             let button_png = Button::with_label("Save to PNG");
             button_png.connect_clicked(clone!(@weak window, @strong title, @strong x_label, @strong y_label, @strong dataset => move |_| {
-                save_image(&window, ImageFormat::PNG, &title, &x_label, &y_label, &dataset);
+                save_image(&window, ImageFormat::Png, &title, &x_label, &y_label, &dataset);
             }));
             let button_svg = Button::with_label("Save to SVG");
             button_svg.connect_clicked(clone!(@weak window, @strong title, @strong x_label, @strong y_label, @strong dataset => move |_| {
-                save_image(&window, ImageFormat::SVG, &title, &x_label, &y_label, &dataset);
+                save_image(&window, ImageFormat::Svg, &title, &x_label, &y_label, &dataset);
             }));
             let button_close = Button::with_label("Close");
             button_close.connect_clicked(clone!(@weak plot_window => move |_| {
@@ -279,7 +279,7 @@ fn do_generate_plot(
 fn generate_plot(
     application: &gtk::Application,
     window: &gtk::ApplicationWindow,
-    state: &Rc<RefCell<UIState>>,
+    state: &Rc<RefCell<UiState>>,
 ) {
     let dialog = gio::SimpleAction::new("plot", None);
     dialog.connect_activate(
@@ -296,7 +296,7 @@ fn generate_plot(
 }
 
 /// Immediately save two files without any check
-fn save_imm(window: &gtk::ApplicationWindow, state: &Rc<RefCell<UIState>>) {
+fn save_imm(window: &gtk::ApplicationWindow, state: &Rc<RefCell<UiState>>) {
     unwrap_result_or_error_return!(state.borrow().save(), &window, "Cannot save file", {});
 }
 
@@ -307,7 +307,7 @@ fn save_imm(window: &gtk::ApplicationWindow, state: &Rc<RefCell<UIState>>) {
 /// whether to overwrite.
 fn maybe_check_main_file_save_all(
     window: &gtk::ApplicationWindow,
-    state: &Rc<RefCell<UIState>>,
+    state: &Rc<RefCell<UiState>>,
     check: bool,
 ) {
     if !check || state.borrow().file_path == String::default() {
@@ -330,7 +330,7 @@ fn maybe_check_main_file_save_all(
 fn save(
     application: &gtk::Application,
     window: &gtk::ApplicationWindow,
-    state: &Rc<RefCell<UIState>>,
+    state: &Rc<RefCell<UiState>>,
 ) {
     let save = gio::SimpleAction::new("save", None);
     save.connect_activate(clone!(@weak window, @strong state => move |_, _| {
@@ -343,7 +343,7 @@ fn save(
 fn save_as(
     application: &gtk::Application,
     window: &gtk::ApplicationWindow,
-    state: &Rc<RefCell<UIState>>,
+    state: &Rc<RefCell<UiState>>,
 ) {
     let save_as = gio::SimpleAction::new("save_as", None);
     save_as.connect_activate(clone!(@weak window, @strong state => move |_, _| {
@@ -353,7 +353,7 @@ fn save_as(
 }
 
 /// Display FileChooser and open a new file
-fn do_open_file(window: &gtk::ApplicationWindow, state: &Rc<RefCell<UIState>>) {
+fn do_open_file(window: &gtk::ApplicationWindow, state: &Rc<RefCell<UiState>>) {
     // Use file chooser to choose file
     let file_chooser = gtk::FileChooserDialog::new(
         Some("Open File"),
@@ -375,7 +375,7 @@ fn do_open_file(window: &gtk::ApplicationWindow, state: &Rc<RefCell<UIState>>) {
                 );
                 // First try to parse it as saved file
                 if let Ok(val) = PhysPlotterFile::from_file(&filename) {
-                    let new_state: UIState = unwrap_result_or_error_return!(
+                    let new_state: UiState = unwrap_result_or_error_return!(
                         val.try_into(),
                         &window,
                         "Couldn't parse file",
@@ -406,7 +406,7 @@ fn do_open_file(window: &gtk::ApplicationWindow, state: &Rc<RefCell<UIState>>) {
 fn open_file(
     application: &gtk::Application,
     window: &gtk::ApplicationWindow,
-    state: &Rc<RefCell<UIState>>,
+    state: &Rc<RefCell<UiState>>,
 ) {
     let open_file = gio::SimpleAction::new("open", None);
     open_file.connect_activate(clone!(@weak window, @strong state => move |_, _| {
@@ -426,17 +426,17 @@ fn open_file(
 fn new_plot(
     application: &gtk::Application,
     window: &gtk::ApplicationWindow,
-    state: &Rc<RefCell<UIState>>,
+    state: &Rc<RefCell<UiState>>,
 ) {
     let new_file = gio::SimpleAction::new("new", None);
     new_file.connect_activate(clone!(@weak window, @strong state => move |_, _| {
         if state.borrow().saved {
-            let new_state = UIState::new();
+            let new_state = UiState::new();
             state.borrow_mut().replace(new_state);
         } else {
             // Not saved, ask if save
             disp_not_saved_dialog(&window, clone!(@strong state => move || {
-                let new_state = UIState::new();
+                let new_state = UiState::new();
                 state.borrow_mut().replace(new_state);
             }));
         }
@@ -448,7 +448,7 @@ fn new_plot(
 pub fn register_actions(
     application: &gtk::Application,
     window: &gtk::ApplicationWindow,
-    state: &Rc<RefCell<UIState>>,
+    state: &Rc<RefCell<UiState>>,
 ) {
     let quit = gio::SimpleAction::new("quit", None);
     quit.connect_activate(clone!(@weak application => move |_,_| {

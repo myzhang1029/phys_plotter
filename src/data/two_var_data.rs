@@ -79,11 +79,11 @@ impl TwoVarDataPoint {
     /// duy: Default y uncertainty
     pub fn from_line(line: &str, dux: f64, duy: f64) -> Result<Self, ParseError> {
         let mut fields: Vec<f64> = Vec::with_capacity(4);
-        let mut line = line;
+        let mut line = line.to_string();
         // Exhaust this line by taking all numeric fields
-        while let Some((number, (_, end_point))) = atof(line) {
+        while let Some((number, (_, end_point))) = atof(&line) {
             fields.push(number);
-            line = &line[end_point..];
+            line = line.chars().skip(end_point).collect::<String>();
             // break when no data can be processed anymore
         }
         // Append to the object
@@ -332,7 +332,8 @@ fn atof(string: &str) -> Option<(f64, (usize, usize))> {
     // -1 for a negative number
     let mut sign: f64 = 1.0;
     // Numbers of fractional digits processed (or to be processed)
-    let mut fracdig = 0;
+    // Negative as it's 10's power
+    let mut fracdig: i32 = 0;
     // Index of the first number
     let mut startpoint: Option<usize> = None;
     // Index of the first non-number
@@ -352,14 +353,14 @@ fn atof(string: &str) -> Option<(f64, (usize, usize))> {
             }
             if fracdig != 0 {
                 /* We cannot use the multiply-shift method as it may cause overflow */
-                result += (chr.to_digit(10).unwrap() as f64) * 10_f64.powi(-fracdig);
-                fracdig += 1;
+                result += (chr.to_digit(10).unwrap() as f64) * 10_f64.powi(fracdig);
+                fracdig -= 1;
             } else {
                 result = result * 10.0 + chr.to_digit(10).unwrap() as f64;
             }
         } else if chr == '.' && fracdig == 0 {
             // Start of decimal point
-            fracdig = 1;
+            fracdig = -1;
         } else if startpoint != None {
             // Processing has started, now end it
             endpoint = idx;

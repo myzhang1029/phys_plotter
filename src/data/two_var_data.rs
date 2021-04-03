@@ -324,12 +324,10 @@ impl TwoVarDataSet {
 /// or None if no number found
 fn atof(string: &str) -> Option<(f64, (usize, usize))> {
     // Resulting number without decimal point
-    let mut result: i32 = 0;
-    // Whether decimal point is met
-    let mut fracpart = false;
+    let mut result: f64 = 0.0;
     // -1 for a negative number
     let mut sign: f64 = 1.0;
-    // Numbers of fractional digits
+    // Numbers of fractional digits processed (or to be processed)
     let mut fracdig = 0;
     // Index of the first number
     let mut startpoint: Option<usize> = None;
@@ -348,13 +346,16 @@ fn atof(string: &str) -> Option<(f64, (usize, usize))> {
                     Some(idx)
                 }
             }
-            result = result * 10 + chr.to_digit(10).unwrap() as i32;
-            if fracpart {
+            if fracdig != 0 {
+                /* We cannot use the multiply-shift method as it may cause overflow */
+                result += (chr.to_digit(10).unwrap() as f64) * 10_f64.powi(-fracdig);
                 fracdig += 1;
+            } else {
+                result = result * 10.0 + chr.to_digit(10).unwrap() as f64;
             }
-        } else if chr == '.' && !fracpart {
+        } else if chr == '.' && fracdig == 0 {
             // Start of decimal point
-            fracpart = true;
+            fracdig = 1;
         } else if startpoint != None {
             // Processing has started, now end it
             endpoint = idx;
@@ -365,9 +366,6 @@ fn atof(string: &str) -> Option<(f64, (usize, usize))> {
         // Still no digits
         None
     } else {
-        Some((
-            result as f64 / 10_i32.pow(fracdig) as f64 * sign,
-            (startpoint.unwrap(), endpoint),
-        ))
+        Some((result * sign, (startpoint.unwrap(), endpoint)))
     }
 }

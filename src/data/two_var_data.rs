@@ -41,21 +41,20 @@ pub struct TwoVarDataPoint {
 
 /// Rules to define the function to get minimum/maximum x/y
 macro_rules! raw_defun_minmax {
-    ($name: ident, $cmp: ident, $val_name: ident, $uncer_name: ident, $uncer_sign: tt) => {
+    ($name: ident, $cmp: ident, $val_name: ident, $uncer_name: ident, $uncer_sign: tt, $default: expr) => {
         /// Get the $name value. if with_uncertainty is true, the uncertainties is also taken into account
         pub fn $name(&self, with_uncertainty: bool) -> f64 {
             // Error check
             if self.is_empty() {
                 return 0.0
             }
-            // The first and third unwraps are safe as long as there is no Inf or NaN (TODO)
-            // The second and fourth unwraps are safe because empty is handled
+            // The unwraps are safe because empty is handled
             if with_uncertainty {
                 let k = self.iter()
                     .$cmp(|one, another|
                         (one.$val_name $uncer_sign one.$uncer_name)
                             .partial_cmp(&(another.$val_name $uncer_sign another.$uncer_name))
-                            .unwrap()
+                            .unwrap_or($default)
                     )
                     .unwrap();
                 k.$val_name $uncer_sign k.$uncer_name
@@ -64,7 +63,7 @@ macro_rules! raw_defun_minmax {
                     .$cmp(|one, another|
                         one.$val_name
                             .partial_cmp(&another.$val_name)
-                            .unwrap()
+                            .unwrap_or($default)
                     )
                     .unwrap()
                     .$val_name
@@ -205,17 +204,18 @@ impl TwoVarDataSet {
         self.iter().map(|item| item.y_uncertainty).collect()
     }
 
+    // All default to false
     // Get the maximum x value
-    raw_defun_minmax! {max_x, max_by, x_value, x_uncertainty, +}
+    raw_defun_minmax! {max_x, max_by, x_value, x_uncertainty, +, std::cmp::Ordering::Less}
 
     // Get the minimum x value
-    raw_defun_minmax! {min_x, min_by, x_value, x_uncertainty, -}
+    raw_defun_minmax! {min_x, min_by, x_value, x_uncertainty, -, std::cmp::Ordering::Greater}
 
     // Get the maximum y value
-    raw_defun_minmax! {max_y, max_by, y_value, y_uncertainty, +}
+    raw_defun_minmax! {max_y, max_by, y_value, y_uncertainty, +, std::cmp::Ordering::Less}
 
     // Get the minimum y value
-    raw_defun_minmax! {min_y, min_by, y_value, y_uncertainty, -}
+    raw_defun_minmax! {min_y, min_by, y_value, y_uncertainty, -, std::cmp::Ordering::Greater}
 
     /// Get line of best fit
     pub fn line_best_fit(&self) -> Line {
@@ -238,10 +238,10 @@ impl TwoVarDataSet {
     }
 
     /// Permute all possible lines by connecting the ends
-    fn lines(&self) -> Vec<Line> {
+    fn lines(&self) -> Option<Vec<Line>> {
         // Error check
         if self.is_empty() {
-            return vec![Default::default()];
+            return None;
         }
         let firstx = self[0].x_value;
         let ufirstx = self[0].x_uncertainty;
@@ -288,34 +288,38 @@ impl TwoVarDataSet {
                 y: lasty - ulasty,
             },
         ];
-        firstpoints
-            .iter()
-            .map(|&first_point| {
-                lastpoints
-                    .iter()
-                    .map(|&last_point| Line::from_points(first_point, last_point))
-                    .collect()
-            })
-            .collect::<Vec<Vec<Line>>>()
-            .concat()
+        Some(
+            firstpoints
+                .iter()
+                .map(|&first_point| {
+                    lastpoints
+                        .iter()
+                        .map(|&last_point| Line::from_points(first_point, last_point))
+                        .collect()
+                })
+                .collect::<Vec<Vec<Line>>>()
+                .concat(),
+        )
     }
 
     /// Get the maximum gradient line
-    pub fn line_max_grad(&self) -> Line {
-        let lns = self.lines();
-        *lns.iter()
-            .max_by(|one, another| one.gradient.partial_cmp(&another.gradient).unwrap())
-            .unwrap()
+    pub fn line_max_grad(&self) -> Option<Line> {
+        let lns = self.lines()?;
+        Some(*lns.iter().max_by(|one, another| {
+            one.gradient
+                .partial_cmp(&another.gradient)
+                .unwrap_or(std::cmp::Ordering::Less)
+        })?)
     }
 
     // Get the minimum gradient line
-    pub fn line_min_grad(&self) -> Line {
-        let lns = self.lines();
-        // The first unwrap is safe provided that self.lines never returns empty
-        // The second unwrap is not safe because 0.0/0.0 can happen (TODO)
-        *lns.iter()
-            .min_by(|one, another| one.gradient.partial_cmp(&another.gradient).unwrap())
-            .unwrap()
+    pub fn line_min_grad(&self) -> Option<Line> {
+        let lns = self.lines()?;
+        Some(*lns.iter().min_by(|one, another| {
+            one.gradient
+                .partial_cmp(&another.gradient)
+                .unwrap_or(std::cmp::Ordering::Greater)
+        })?)
     }
 }
 

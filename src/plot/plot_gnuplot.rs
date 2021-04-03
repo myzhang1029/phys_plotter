@@ -37,22 +37,18 @@ pub fn plot_gnuplot(
     // Two points for plotting the lines
     let ln_plt_x = Vec::from([data.min_x(true) - extra, data.max_x(true) + extra]);
     // Three lines
-    let line_best_fit = data.line_best_fit();
-    let line_min_grad = data.line_min_grad();
-    let line_max_grad = data.line_max_grad();
-    let y_best: Vec<f64> = ln_plt_x.iter().map(|x| line_best_fit.y(*x)).collect();
-    let y_min: Vec<f64> = ln_plt_x.iter().map(|x| line_min_grad.y(*x)).collect();
-    let y_max: Vec<f64> = ln_plt_x.iter().map(|x| line_max_grad.y(*x)).collect();
     let x_values = data.get_x_value();
     let y_values = data.get_y_value();
     let mut fg = Figure::new();
-    fg.axes2d()
+    let figure = fg
+        .axes2d()
         .set_title(title, &[Font("Times", 22.0)])
         .set_x_label(x_label, &[Font("Times", 13.0)])
         .set_y_label(y_label, &[Font("Times", 13.0)])
         // Automatically generate ticks
         .set_x_ticks(Some((Auto, 1)), &[], &[Font("Times", 13.0)])
-        .set_y_ticks(Some((Auto, 1)), &[], &[Font("Times", 13.0)])
+        .set_y_ticks(Some((Auto, 1)), &[], &[Font("Times", 13.0)]);
+    figure
         // Scatter points "Real data"
         //.points(&x_values, &y_values, &[Color("#4477AA"), PointSymbol('.')])
         // Plot error bars
@@ -68,17 +64,22 @@ pub fn plot_gnuplot(
             &data.get_y_uncertainty(),
             &[LineWidth(1.5), Color("#4477AA")],
         )
-        // Three required lines
-        .lines(
-            &ln_plt_x,
-            &y_best,
-            &[
-                Caption(line_best_fit_name!(line_best_fit).as_str()),
-                LineWidth(2.0),
-                Color("#EE7733"),
-            ],
-        )
-        .lines(
+        .set_legend(Graph(0.99), Graph(0.95), &[], &[Font("Times", 13.0)]);
+    // Three required lines
+    let line_best_fit = data.line_best_fit();
+    let y_best: Vec<f64> = ln_plt_x.iter().map(|x| line_best_fit.y(*x)).collect();
+    figure.lines(
+        &ln_plt_x,
+        &y_best,
+        &[
+            Caption(line_best_fit_name!(line_best_fit).as_str()),
+            LineWidth(2.0),
+            Color("#EE7733"),
+        ],
+    );
+    if let Some(line_min_grad) = data.line_min_grad() {
+        let y_min: Vec<f64> = ln_plt_x.iter().map(|x| line_min_grad.y(*x)).collect();
+        figure.lines(
             &ln_plt_x,
             &y_min,
             &[
@@ -87,8 +88,11 @@ pub fn plot_gnuplot(
                 LineWidth(1.5),
                 Color("#009988"),
             ],
-        )
-        .lines(
+        );
+    }
+    if let Some(line_max_grad) = data.line_max_grad() {
+        let y_max: Vec<f64> = ln_plt_x.iter().map(|x| line_max_grad.y(*x)).collect();
+        figure.lines(
             &ln_plt_x,
             &y_max,
             &[
@@ -97,8 +101,8 @@ pub fn plot_gnuplot(
                 LineWidth(1.5),
                 Color("#0077BB"),
             ],
-        )
-        .set_legend(Graph(0.99), Graph(0.95), &[], &[Font("Times", 13.0)]);
+        );
+    }
     match save {
         Some(save) => {
             fg.save_to_png(save.path, save.width, save.height)?;

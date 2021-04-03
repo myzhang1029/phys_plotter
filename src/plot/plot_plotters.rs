@@ -89,26 +89,28 @@ pub fn plot_plotters<ET: std::error::Error + Send + Sync, T: DrawingBackend<Erro
         .draw()?;
     // Three lines
     let line_best_fit = data.line_best_fit();
-    let line_min_grad = data.line_min_grad();
-    let line_max_grad = data.line_max_grad();
     ctx.draw_series(LineSeries::new(
         plot_x.iter().map(|x| (*x, line_best_fit.y(*x))),
         line_best_fit_style!(),
     ))?
     .label(line_best_fit_name!(line_best_fit).as_str())
     .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], line_best_fit_style!()));
-    ctx.draw_series(LineSeries::new(
-        plot_x.iter().map(|x| (*x, line_min_grad.y(*x))),
-        line_min_grad_style!(),
-    ))?
-    .label(line_min_grad_name!(line_min_grad).as_str())
-    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], line_min_grad_style!()));
-    ctx.draw_series(LineSeries::new(
-        plot_x.iter().map(|x| (*x, line_max_grad.y(*x))),
-        line_max_grad_style!(),
-    ))?
-    .label(line_max_grad_name!(line_max_grad).as_str())
-    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], line_max_grad_style!()));
+    if let Some(line_min_grad) = data.line_min_grad() {
+        ctx.draw_series(LineSeries::new(
+            plot_x.iter().map(|x| (*x, line_min_grad.y(*x))),
+            line_min_grad_style!(),
+        ))?
+        .label(line_min_grad_name!(line_min_grad).as_str())
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], line_min_grad_style!()));
+    }
+    if let Some(line_max_grad) = data.line_max_grad() {
+        ctx.draw_series(LineSeries::new(
+            plot_x.iter().map(|x| (*x, line_max_grad.y(*x))),
+            line_max_grad_style!(),
+        ))?
+        .label(line_max_grad_name!(line_max_grad).as_str())
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], line_max_grad_style!()));
+    }
     // Scatter series and uncertainties
     /*ctx.draw_series(
         data.iter().map(|point|

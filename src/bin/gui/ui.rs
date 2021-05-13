@@ -296,7 +296,7 @@ macro_rules! unwrap_result_or_error_return {
         match $thing {
             Ok(result) => result,
             Err(error) => {
-                create_error_popup($window, "Error", &format!("{}: {:?}", $msg, error));
+                create_error_popup($window, "Error", &format!("{}: {}", $msg, error));
                 return $retv;
             }
         }

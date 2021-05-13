@@ -5,4 +5,4 @@ pub const Y_LABEL: &str = "y";
 pub const X_UNCERTAINTY: &str = "0.01";
 pub const Y_UNCERTAINTY: &str = "0.01";
 pub const BACKEND: &str = "plotters";
-pub const APP_ID: &str = "bike.myzhangll.Physics.Plotter";
+pub const APP_ID: &str = "xyz.myzhangll.Physics.Plotter";

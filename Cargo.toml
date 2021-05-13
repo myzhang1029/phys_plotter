@@ -9,7 +9,7 @@ edition = "2018"
 
 [package.metadata.bundle.bin.phys_plotter_gui]
 name = "Physics Plotter"
-identifier = "bike.myzhangll.Physics.Plotter"
+identifier = "xyz.myzhangll.Physics.Plotter"
 
 [dependencies]
 clap = "2.33.3"

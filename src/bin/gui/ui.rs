@@ -238,7 +238,7 @@ pub fn app(application: &gtk::Application) {
             Inhibit(false)
         } else {
             // Not saved, ask if save
-            disp_not_saved_dialog(&window, clone!(@weak application, @weak window, @strong ui_state => move || {
+            disp_not_saved_dialog(&window, clone!(@weak application, @strong ui_state => move || {
                 // Do exit
                 // Since I cannot return Inhibit(false) here, I will pretend it
                 // to be saved, and reinitiate this signal

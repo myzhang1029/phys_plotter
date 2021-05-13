@@ -171,14 +171,11 @@ fn main() {
             &x_label,
             &y_label,
             &dataset.unwrap(),
-            match matches.value_of("out_file") {
-                Some(path) => Some(plot::SaveOptions {
-                    path: std::path::Path::new(path),
-                    width: matches.value_of("width").unwrap().parse().unwrap(),
-                    height: matches.value_of("height").unwrap().parse().unwrap(),
-                }),
-                None => None,
-            },
+            matches.value_of("out_file").map(|path| plot::SaveOptions {
+                path: std::path::Path::new(path),
+                width: matches.value_of("width").unwrap().parse().unwrap(),
+                height: matches.value_of("height").unwrap().parse().unwrap(),
+            }),
         )
         .unwrap(),
         _ => (),

@@ -228,10 +228,6 @@ pub fn app(application: &gtk::Application) {
 
     window.add(&container);
 
-    /*button.connect_clicked(move |_| {
-        &label.set_label("Hello, World!");
-    });*/
-
     register_actions(application, &window, &ui_state);
     window.connect_delete_event(clone!(@weak application, @weak window, @strong ui_state => @default-return Inhibit(false), move |_,_| {
         if ui_state.borrow().saved {

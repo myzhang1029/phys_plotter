@@ -88,23 +88,6 @@ impl epi::App for App {
 
 impl App {
     fn draw_top_menu(&mut self, ctx: &egui::CtxRef, frame: &epi::Frame) {
-        let Self {
-            saved,
-            show_about,
-            show_confirm_then_new,
-            show_confirm_then_open,
-            show_confirm_then_quit,
-            title,
-            x_label,
-            y_label,
-            default_x_uncertainty,
-            default_y_uncertainty,
-            dataset,
-            backend,
-            file_path,
-            ..
-        } = self;
-
         egui::TopBottomPanel::top("oper_menu").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 if ui.button("New").clicked() {

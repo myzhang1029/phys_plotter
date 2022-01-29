@@ -17,7 +17,7 @@
 //  along with physics plotter.  If not, see <https://www.gnu.org/licenses/>.
 //
 
-use crate::state::{Backends, UiState};
+use crate::state::UiState;
 use crate::ui::{create_error_popup, disp_not_saved_dialog, disp_save_dialog};
 use crate::{unwrap_option_or_error_return, unwrap_result_or_error_return};
 use clap::crate_version;
@@ -29,7 +29,7 @@ use gtk::{
     AboutDialogBuilder, Button, DialogBuilder, DrawingArea, Orientation, RadioButton, ResponseType,
 };
 use phys_plotter::data::TwoVarDataSet;
-use phys_plotter::plot;
+use phys_plotter::plot::{self, Backends};
 use phys_plotter::save_format::PhysPlotterFile;
 use plotters::prelude::*;
 use plotters_cairo::CairoBackend;

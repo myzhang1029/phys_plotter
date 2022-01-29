@@ -21,60 +21,10 @@ use clap::crate_version;
 use gtk::prelude::*;
 use gtk::{EntryBuffer, TextBuffer, TextBufferBuilder};
 use phys_plotter::default_values as defv;
+use phys_plotter::plot::{Backends, BackendsFromStrError};
 use phys_plotter::save_format::PhysPlotterFile;
 use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
-
-/// Available backends
-#[derive(Debug, Copy, Clone)]
-pub enum Backends {
-    Gnuplot,
-    Plotters,
-}
-
-impl std::fmt::Display for Backends {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Backends::Gnuplot => write!(f, "gnuplot"),
-            Backends::Plotters => write!(f, "plotters"),
-        }
-    }
-}
-
-/// Error when converting from str to Backends
-#[derive(Clone)]
-pub enum BackendsFromStrError {
-    UnknownBackend(String),
-}
-
-impl std::fmt::Display for BackendsFromStrError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            BackendsFromStrError::UnknownBackend(bstr) => write!(f, "Unknown backend: {}", bstr),
-        }
-    }
-}
-
-impl std::fmt::Debug for BackendsFromStrError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            BackendsFromStrError::UnknownBackend(bstr) => write!(f, "Unknown backend: {:?}", bstr),
-        }
-    }
-}
-
-impl FromStr for Backends {
-    type Err = BackendsFromStrError;
-
-    /// Parse backend description
-    fn from_str(bstr: &str) -> Result<Self, Self::Err> {
-        match bstr.to_lowercase().as_str() {
-            "plotters" => Ok(Backends::Plotters),
-            "gnuplot" => Ok(Backends::Gnuplot),
-            other => Err(Self::Err::UnknownBackend(other.to_string())),
-        }
-    }
-}
 
 /// Struct for GUI app UI state
 #[derive(Debug, Clone)]

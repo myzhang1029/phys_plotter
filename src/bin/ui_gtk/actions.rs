@@ -50,7 +50,7 @@ fn about_action(application: &gtk::Application, window: &gtk::ApplicationWindow)
             .website_label("Project page on GitHub")
             .website("https://github.com/myzhang1029/phys_plotter")
             .authors(vec![String::from("Zhang Maiyun")])
-            .copyright("Copyright (C) 2021 Zhang Maiyun.")
+            .copyright(defv::COPYRIGHT)
             .license_type(Gpl30)
             .transient_for(&window)
             .build();

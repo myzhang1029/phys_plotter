@@ -263,7 +263,7 @@ impl App {
                             Value::new(ln_plt_x[0], best_fit.y(ln_plt_x[0])),
                             Value::new(ln_plt_x[1], best_fit.y(ln_plt_x[1])),
                         ]))
-                        .name("Best Fit"),
+                        .name(format!("Best Fit {}", best_fit)),
                     );
                     if let Some(line_min_grad) = dataset.line_min_grad() {
                         plot_ui.line(
@@ -271,7 +271,7 @@ impl App {
                                 Value::new(ln_plt_x[0], line_min_grad.y(ln_plt_x[0])),
                                 Value::new(ln_plt_x[1], line_min_grad.y(ln_plt_x[1])),
                             ]))
-                            .name("Minimum Gradient")
+                            .name(format!("Minimum Gradient {}", line_min_grad))
                             .style(LineStyle::Dashed { length: 5.0 }),
                         );
                     }
@@ -281,7 +281,7 @@ impl App {
                                 Value::new(ln_plt_x[0], line_max_grad.y(ln_plt_x[0])),
                                 Value::new(ln_plt_x[1], line_max_grad.y(ln_plt_x[1])),
                             ]))
-                            .name("Maximum Gradient")
+                            .name(format!("Maximum Gradient {}", line_max_grad))
                             .style(LineStyle::Dashed { length: 5.0 }),
                         );
                     }

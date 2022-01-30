@@ -292,7 +292,7 @@ impl App {
                         )]))
                         .shape(MarkerShape::Cross)
                         .color(Color32::DARK_GREEN)
-                        .radius(3.0 * extra as f32)
+                        .radius(5.0)
                         .filled(false);
                         plot_ui.points(main);
                         // Tips of error bars
@@ -304,7 +304,7 @@ impl App {
                         ]))
                         .shape(MarkerShape::Plus)
                         .color(Color32::DARK_GREEN)
-                        .radius(3.0 * extra as f32)
+                        .radius(5.0)
                         .filled(false);
                         plot_ui.points(around);
                         // Error bar

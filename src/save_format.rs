@@ -45,7 +45,7 @@ impl PhysPlotterFile {
         Ok(())
     }
 
-    /// Open filename and try to parse it as PhysPlotterFile
+    /// Open filename and try to parse it as `PhysPlotterFile`
     pub fn from_file<P: AsRef<Path>>(filename: P) -> std::io::Result<Self> {
         let file = File::open(&filename)?;
         let reader = BufReader::new(file);

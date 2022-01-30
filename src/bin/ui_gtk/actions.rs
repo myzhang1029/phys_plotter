@@ -29,6 +29,7 @@ use gtk::{
     AboutDialogBuilder, Button, DialogBuilder, DrawingArea, Orientation, RadioButton, ResponseType,
 };
 use phys_plotter::data::TwoVarDataSet;
+use phys_plotter::default_values as defv;
 use phys_plotter::plot::{self, Backends};
 use phys_plotter::save_format::PhysPlotterFile;
 use plotters::prelude::*;
@@ -156,12 +157,12 @@ fn save_image(
     let x_label = x_label.to_string();
     let y_label = y_label.to_string();
     disp_save_dialog(
-        &window,
+        window,
         "Save Image to",
         clone!(@weak window, @strong title, @strong x_label, @strong y_label, @strong dataset => move |filename| {
             match format {
                 ImageFormat::Svg => unwrap_result_or_error_return!(
-                    plot::plot_plotters(
+                    plot::plotters(
                         &title,
                         &x_label,
                         &y_label,
@@ -173,7 +174,7 @@ fn save_image(
                     {}
                 ),
                 ImageFormat::Png => unwrap_result_or_error_return!(
-                    plot::plot_plotters(
+                    plot::plotters(
                         &title,
                         &x_label,
                         &y_label,
@@ -217,7 +218,7 @@ fn do_generate_plot(
     let y_label = state_local.y_label.get_text();
     // Call plotting backend
     match state_local.backend {
-        Backends::Gnuplot => plot::plot_gnuplot(&title, &x_label, &y_label, &dataset, None)?,
+        Backends::Gnuplot => plot::gnuplot(&title, &x_label, &y_label, &dataset, None)?,
         Backends::Plotters => {
             // Create a new window for drawing
             let plot_window = gtk::Window::new(gtk::WindowType::Toplevel);
@@ -234,7 +235,7 @@ fn do_generate_plot(
             drawing_area.connect_draw(clone!(@weak window, @weak plot_window, @strong title, @strong x_label, @strong y_label, @strong dataset => @default-return Inhibit(false), move |_, ctx| {
                 let backend = CairoBackend::new(ctx, (960, 540)).unwrap();
                 unwrap_result_or_error_return!(
-                    plot::plot_plotters(
+                    plot::plotters(
                         &title,
                         &x_label,
                         &y_label,
@@ -297,7 +298,7 @@ fn generate_plot(
 
 /// Immediately save two files without any check
 fn save_imm(window: &gtk::ApplicationWindow, state: &Rc<RefCell<UiState>>) {
-    unwrap_result_or_error_return!(state.borrow().save(), &window, "Cannot save file", {});
+    unwrap_result_or_error_return!(state.borrow().save(), window, "Cannot save file", {});
 }
 
 /// Wrapper to save dataset and project. If check is false, a new path of
@@ -456,12 +457,12 @@ pub fn register_actions(
     }));
     application.add_action(&quit);
     about_action(application, window);
-    change_backend(application, window, &state);
-    generate_plot(application, window, &state);
-    save(application, window, &state);
-    save_as(application, window, &state);
-    open_file(application, window, &state);
-    new_plot(application, window, &state);
+    change_backend(application, window, state);
+    generate_plot(application, window, state);
+    save(application, window, state);
+    save_as(application, window, state);
+    open_file(application, window, state);
+    new_plot(application, window, state);
     application.set_accels_for_action("app.quit", &["<Primary>Q"]);
     application.set_accels_for_action("app.change_backend", &["<Primary>B"]);
     application.set_accels_for_action("app.plot", &["<Primary>G"]);

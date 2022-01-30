@@ -5,7 +5,7 @@ But you can plot any such dataset as you like.
 ## Prerequisite
 Optional: 
  - Install `gnuplot`. (Only required if you plan to use this backend)
- - Install GTK. (Only required if you want to build the GUI)
+ - Install GTK. (Only required if you want to build the GTK GUI)
  - Install `cargo-bundle`. (Only required if you want to build app bundles or installers)
 
 ## CLI Usage
@@ -25,12 +25,13 @@ Optional:
 
 ## GUI Usage
 1. Input your data in the same format as above.
-2. Change the titles and labels on the left.
-3. Click `Ctrl+G` (or `⌘+G` on a Mac).
+2. Change the titles and labels.
+3. Click "Plot".
 
 ## Building
-- To build everything, run `cargo build --release`.
-- To build only the GUI, run `cargo build --release --bin phys_plotter_gui`.
+- To build everything, run `cargo build --release --features=ui_gtk,ui_egui_with_file`.
+- To build only the GTK GUI, run `cargo build --release --bin phys_plotter_gtk --features=ui_gtk`.
+- To build only the egui GUI, run `cargo build --release --bin phys_plotter_egui --features=ui_egui_with_file`.
 - To build only the CLI, run `cargo build --release --bin phys_plotter`.
 - To create a macOS app or other installers, run `cargo bundle --release --bin phys_plotter_gui`.
 

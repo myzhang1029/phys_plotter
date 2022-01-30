@@ -35,6 +35,7 @@ pub struct Line {
 
 impl Line {
     /// Construct a line from two points
+    #[must_use]
     pub fn from_points(first: Point, last: Point) -> Self {
         let dx = last.x - first.x;
         let dy = last.y - first.y;
@@ -47,6 +48,7 @@ impl Line {
     }
 
     /// y value of the x
+    #[must_use]
     pub fn y(&self, x: f64) -> f64 {
         self.gradient * x + self.y_intercept
     }

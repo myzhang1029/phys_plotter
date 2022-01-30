@@ -26,7 +26,7 @@ use plotters::prelude::*;
 use std::process::exit;
 
 /// Validator for uncertainties
-fn du_validator(num: String) -> Result<(), String> {
+fn du_validator(num: &str) -> Result<(), String> {
     match num.parse::<f64>() {
         Ok(_) => Ok(()),
         Err(error) => Err(format!("{}", error)),
@@ -34,7 +34,7 @@ fn du_validator(num: String) -> Result<(), String> {
 }
 
 /// Validator for height and width
-fn size_validator(num: String) -> Result<(), String> {
+fn size_validator(num: &str) -> Result<(), String> {
     match num.parse::<u32>() {
         Ok(_) => Ok(()),
         Err(error) => Err(format!("{}", error)),
@@ -46,72 +46,72 @@ fn main() {
         .version(crate_version!())
         .author("Zhang Maiyun <myzhang1029@hotmail.com>")
         .about("Plot physics two-variable observation data with best-fit lines, max,min-gradient lines, and error bars.")
-        .arg(Arg::with_name("DATASET_FILE")
+        .arg(Arg::new("DATASET_FILE")
             .help("Sets the data file to parse")
             .required(true)
             .index(1))
-        .arg(Arg::with_name("psp_file")
+        .arg(Arg::new("psp_file")
             .help("Indicates that aphysics plotter saved file is used as DATASET_FILE")
-            .short("p")
+            .short('p')
             .long("psp-file")
             .conflicts_with_all(&["title", "x_label", "y_label", "dux", "duy", "backend"]))
-        .arg(Arg::with_name("title")
-            .short("t")
+        .arg(Arg::new("title")
+            .short('t')
             .long("title")
             .value_name("TITLE")
             .default_value(defv::TITLE)
             .help("Sets the title of the plot"))
-        .arg(Arg::with_name("x_label")
-            .short("x")
+        .arg(Arg::new("x_label")
+            .short('x')
             .long("x-label")
             .value_name("X_LABEL")
             .default_value(defv::X_LABEL)
             .help("Sets the x axis label"))
-        .arg(Arg::with_name("y_label")
-            .short("y")
+        .arg(Arg::new("y_label")
+            .short('y')
             .long("y-label")
             .value_name("Y_LABEL")
             .default_value(defv::Y_LABEL)
             .help("Sets the y axis label"))
-        .arg(Arg::with_name("dux")
-            .short("X")
+        .arg(Arg::new("dux")
+            .short('X')
             .long("default-ux")
             .value_name("DEFAULT_X_UNCERTAINTY")
             .default_value(defv::X_UNCERTAINTY)
             .validator(du_validator)
             .help("Sets a default value for x uncertainty"))
-        .arg(Arg::with_name("duy")
-            .short("Y")
+        .arg(Arg::new("duy")
+            .short('Y')
             .long("default-uy")
             .value_name("DEFAULT_Y_UNCERTAINTY")
             .default_value(defv::Y_UNCERTAINTY)
             .validator(du_validator)
             .help("Sets a default value for y uncertainty"))
-        .arg(Arg::with_name("backend")
-            .short("b")
+        .arg(Arg::new("backend")
+            .short('b')
             .long("backend")
             .value_name("BACKEND")
             .possible_value("gnuplot")
             .possible_value("plotters")
             .default_value(defv::BACKEND)
             .help("Sets the plotting backend"))
-        .arg(Arg::with_name("out_file")
-            .short("s")
+        .arg(Arg::new("out_file")
+            .short('s')
             .long("save-to")
             .value_name("PATH")
             .requires("width")
             .requires("height")
-            .required_if("backend", "plotters")
+            .required_if_eq("backend", "plotters")
             .help("Saves the graph to PATH instead of showing it"))
-        .arg(Arg::with_name("width")
-            .short("w")
+        .arg(Arg::new("width")
+            .short('w')
             .long("width")
             .value_name("WIDTH")
             .requires("out_file")
             .validator(size_validator)
             .help("Sets the image width in pixels (recommended: 960)"))
-        .arg(Arg::with_name("height")
-            .short("h")
+        .arg(Arg::new("height")
+            .short('h')
             .long("height")
             .value_name("HEIGHT")
             .requires("out_file")
@@ -151,7 +151,7 @@ fn main() {
         exit(2);
     }
     match matches.value_of("backend").unwrap() {
-        "plotters" => plot::plot_plotters(
+        "plotters" => plot::plotters(
             &title,
             &x_label,
             &y_label,
@@ -166,7 +166,7 @@ fn main() {
             ),
         )
         .unwrap(),
-        "gnuplot" => plot::plot_gnuplot(
+        "gnuplot" => plot::gnuplot(
             &title,
             &x_label,
             &y_label,

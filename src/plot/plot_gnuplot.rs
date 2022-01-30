@@ -25,7 +25,7 @@ use gnuplot::{
 };
 
 /// Plot dataset with the gnuplot backend. If save is None, the graph is only shown, else the graph is saved
-pub fn plot_gnuplot(
+pub fn gnuplot(
     title: &str,
     x_label: &str,
     y_label: &str,

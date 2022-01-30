@@ -42,7 +42,8 @@ pub struct TwoVarDataPoint {
 /// Rules to define the function to get minimum/maximum x/y
 macro_rules! raw_defun_minmax {
     ($name: ident, $cmp: ident, $val_name: ident, $uncer_name: ident, $uncer_sign: tt, $default: expr) => {
-        /// Get the $name value. if with_uncertainty is true, the uncertainties is also taken into account
+        /// Get the $name value. if `with_uncertainty` is true, the uncertainties is also taken into account
+        #[must_use]
         pub fn $name(&self, with_uncertainty: bool) -> f64 {
             // Error check
             if self.is_empty() {
@@ -167,6 +168,7 @@ impl TwoVarDataSet {
     }
 
     /// Get the arithmetic average value of x
+    #[must_use]
     pub fn mean_x(&self) -> f64 {
         let mut sum: f64 = 0.0;
         for value in self.iter() {
@@ -176,6 +178,7 @@ impl TwoVarDataSet {
     }
 
     /// Get the arithmetic average value of y
+    #[must_use]
     pub fn mean_y(&self) -> f64 {
         let mut sum: f64 = 0.0;
         for value in self.iter() {
@@ -185,21 +188,25 @@ impl TwoVarDataSet {
     }
 
     /// Get all x values as a vector
+    #[must_use]
     pub fn get_x_value(&self) -> Vec<f64> {
         self.iter().map(|item| item.x_value).collect()
     }
 
     /// Get all x uncertainties as a vector
+    #[must_use]
     pub fn get_x_uncertainty(&self) -> Vec<f64> {
         self.iter().map(|item| item.x_uncertainty).collect()
     }
 
     /// Get all y values as a vector
+    #[must_use]
     pub fn get_y_value(&self) -> Vec<f64> {
         self.iter().map(|item| item.y_value).collect()
     }
 
     /// Get all y uncertainties as a vector
+    #[must_use]
     pub fn get_y_uncertainty(&self) -> Vec<f64> {
         self.iter().map(|item| item.y_uncertainty).collect()
     }
@@ -218,6 +225,7 @@ impl TwoVarDataSet {
     raw_defun_minmax! {min_y, min_by, y_value, y_uncertainty, -, std::cmp::Ordering::Greater}
 
     /// Get line of best fit
+    #[must_use]
     pub fn line_best_fit(&self) -> Line {
         let ax = self.mean_x();
         let ay = self.mean_y();
@@ -303,6 +311,7 @@ impl TwoVarDataSet {
     }
 
     /// Get the maximum gradient line
+    #[must_use]
     pub fn line_max_grad(&self) -> Option<Line> {
         let lns = self.lines()?;
         Some(*lns.iter().max_by(|one, another| {
@@ -313,6 +322,7 @@ impl TwoVarDataSet {
     }
 
     // Get the minimum gradient line
+    #[must_use]
     pub fn line_min_grad(&self) -> Option<Line> {
         let lns = self.lines()?;
         Some(*lns.iter().min_by(|one, another| {
@@ -351,12 +361,12 @@ fn atof(string: &str) -> Option<(f64, (usize, usize))> {
                     Some(idx)
                 }
             }
-            if fracdig != 0 {
-                /* We cannot use the multiply-shift method as it may cause overflow */
-                result += (chr.to_digit(10).unwrap() as f64) * 10_f64.powi(fracdig);
-                fracdig -= 1;
+            if fracdig == 0 {
+                result = result * 10.0 + f64::from(chr.to_digit(10).unwrap());
             } else {
-                result = result * 10.0 + chr.to_digit(10).unwrap() as f64;
+                /* We cannot use the multiply-shift method as it may cause overflow */
+                result += f64::from(chr.to_digit(10).unwrap()) * 10_f64.powi(fracdig);
+                fracdig -= 1;
             }
         } else if chr == '.' && fracdig == 0 {
             // Start of decimal point

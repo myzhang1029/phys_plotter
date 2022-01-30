@@ -53,7 +53,7 @@ macro_rules! line_max_grad_style {
 
 /// Generic plotter for all kinds of backends.
 /// WARNING: Cannot proceed with empty values
-pub fn plot_plotters<ET: std::error::Error + Send + Sync, T: DrawingBackend<ErrorType = ET>>(
+pub fn plotters<ET: std::error::Error + Send + Sync, T: DrawingBackend<ErrorType = ET>>(
     title: &str,
     x_label: &str,
     y_label: &str,

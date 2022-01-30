@@ -227,7 +227,9 @@ impl App {
                         .desired_width(f32::INFINITY)
                         .desired_rows(10)
                         .cursor_at_end(true);
-                    ui.add(dsbox);
+                    if ui.add(dsbox).changed() {
+                        *saved = false;
+                    }
                 });
         });
     }

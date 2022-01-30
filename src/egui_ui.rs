@@ -12,6 +12,8 @@ use eframe::{
     },
     epi,
 };
+#[cfg(target_arch = "wasm32")]
+use futures::executor::block_on;
 use plotters::prelude::*;
 use std::convert::TryInto;
 use std::fs::File;
@@ -377,29 +379,33 @@ impl App {
         *self = App::default();
     }
 
+    fn fill_app_from_saved(&mut self, val: PhysPlotterFile) {
+        match Backends::from_str(&val.backend_name) {
+            Ok(result) => {
+                self.saved = true;
+                self.backend = result;
+                self.title = val.title;
+                self.dataset = val.dataset;
+                self.x_label = val.x_label;
+                self.y_label = val.y_label;
+                self.default_x_uncertainty = format!("{}", val.default_x_uncertainty);
+                self.default_y_uncertainty = format!("{}", val.default_y_uncertainty);
+            }
+            Err(error) => {
+                self.error = Some(format!(
+                    "Unknown backend type {}: {}",
+                    val.backend_name, error
+                ));
+            }
+        }
+    }
+
     /// Load path into the state and decide whether to modify `self.file_path`
     fn load_file(&mut self, path: &str) {
         // First try to parse it as saved file
         if let Ok(val) = PhysPlotterFile::from_file(&path) {
-            match Backends::from_str(&val.backend_name) {
-                Ok(result) => {
-                    self.file_path = path.to_owned();
-                    self.saved = true;
-                    self.backend = result;
-                    self.title = val.title;
-                    self.dataset = val.dataset;
-                    self.x_label = val.x_label;
-                    self.y_label = val.y_label;
-                    self.default_x_uncertainty = format!("{}", val.default_x_uncertainty);
-                    self.default_y_uncertainty = format!("{}", val.default_y_uncertainty);
-                }
-                Err(error) => {
-                    self.error = Some(format!(
-                        "Unknown backend type {}: {}",
-                        val.backend_name, error
-                    ));
-                }
-            }
+            self.fill_app_from_saved(val);
+            self.file_path = path.to_owned();
         } else {
             // Else treat as plain dataset text
             // Treat this as not saved
@@ -425,7 +431,18 @@ impl App {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn open(&mut self) {}
+    fn open(&mut self) {
+        block_on(async move {
+            if let Some(file) = rfd::AsyncFileDialog::new().pick_file().await {
+                let content = file.read().await;
+                if let Ok(val) = PhysPlotterFile::from_reader(content.as_slice()) {
+                    self.fill_app_from_saved(val);
+                } else {
+                    self.dataset = String::from_utf8_lossy(&content).to_string();
+                }
+            }
+        });
+    }
 
     /// Pass `true` to `force_choose` for "save as"
     #[cfg(not(target_arch = "wasm32"))]

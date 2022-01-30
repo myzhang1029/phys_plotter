@@ -52,6 +52,11 @@ impl PhysPlotterFile {
         Ok(())
     }
 
+    /// Try to parse a reader as `PhysPlotterFile`
+    pub fn from_reader<R: std::io::Read>(reader: R) -> serde_json::Result<Self> {
+        from_reader::<_, PhysPlotterFile>(reader)
+    }
+
     /// Open filename and try to parse it as `PhysPlotterFile`
     pub fn from_file<P: AsRef<Path>>(filename: P) -> std::io::Result<Self> {
         let file = File::open(&filename)?;

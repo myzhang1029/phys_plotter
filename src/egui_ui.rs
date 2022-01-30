@@ -12,9 +12,12 @@ use eframe::{
     },
     epi,
 };
+use plotters::prelude::*;
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::Read;
+#[cfg(not(target_arch = "wasm32"))]
+use std::io::Write;
 use std::ops::Deref;
 use std::str::FromStr;
 
@@ -29,6 +32,7 @@ pub struct App {
     show_confirm_then_new: bool,
     #[cfg_attr(feature = "persistence", serde(skip))]
     show_confirm_then_open: bool,
+    /// If is a Some(), the error message is wrapped.
     #[cfg_attr(feature = "persistence", serde(skip))]
     error: Option<String>,
 
@@ -82,8 +86,8 @@ impl epi::App for App {
         epi::set_value(storage, epi::APP_KEY, self);
     }
 
-    fn update(&mut self, ctx: &egui::CtxRef, frame: &epi::Frame) {
-        self.draw_top_menu(ctx, frame);
+    fn update(&mut self, ctx: &egui::CtxRef, _frame: &epi::Frame) {
+        self.draw_top_menu(ctx);
         self.draw_side_panel(ctx);
         self.draw_preview_area(ctx);
         self.draw_about_window(ctx);
@@ -94,8 +98,7 @@ impl epi::App for App {
 }
 
 impl App {
-    #[cfg(feature = "ui_egui_with_file")]
-    fn draw_top_menu(&mut self, ctx: &egui::CtxRef, frame: &epi::Frame) {
+    fn draw_top_menu(&mut self, ctx: &egui::CtxRef) {
         egui::TopBottomPanel::top("open_menu").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 if ui.button("New").clicked() {
@@ -113,52 +116,16 @@ impl App {
                     }
                 }
                 if ui.button("Save").clicked() {
-                    self.save();
+                    self.save(false);
                 }
                 if ui.button("Save As").clicked() {
-                    // This dialog does overwrite confirmation for us
-                    if let Some(path) = rfd::FileDialog::new()
-                        .add_filter("Physics Plotter File", &["pyp"])
-                        .save_file()
-                    {
-                        self.file_path = path.display().to_string();
-                    }
-                    self.save();
+                    self.save(true);
                 }
                 if ui.button("Plot").clicked() {
                     self.plot();
                 }
                 if ui.button("About").clicked() {
                     self.show_about = true;
-                }
-                if ui.button("Quit").clicked() {
-                    // State is preserved
-                    frame.quit();
-                }
-            });
-        });
-    }
-
-    #[cfg(not(feature = "ui_egui_with_file"))]
-    fn draw_top_menu(&mut self, ctx: &egui::CtxRef, frame: &epi::Frame) {
-        egui::TopBottomPanel::top("open_menu").show(ctx, |ui| {
-            egui::menu::bar(ui, |ui| {
-                if ui.button("New").clicked() {
-                    if self.saved {
-                        self.reset();
-                    } else {
-                        self.show_confirm_then_new = true;
-                    }
-                }
-                if ui.button("Plot").clicked() {
-                    self.plot();
-                }
-                if ui.button("About").clicked() {
-                    self.show_about = true;
-                }
-                if ui.button("Quit").clicked() {
-                    // State is preserved
-                    frame.quit();
                 }
             });
         });
@@ -366,8 +333,7 @@ impl App {
     }
 
     fn draw_about_window(&mut self, ctx: &egui::CtxRef) {
-        let Self { show_about, .. } = self;
-        if *show_about {
+        if self.show_about {
             egui::Window::new("About").show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 0.0;
@@ -450,7 +416,7 @@ impl App {
         }
     }
 
-    #[cfg(feature = "ui_egui_with_file")]
+    #[cfg(not(target_arch = "wasm32"))]
     fn open(&mut self) {
         if let Some(path) = rfd::FileDialog::new().pick_file() {
             let path = path.display().to_string();
@@ -458,15 +424,17 @@ impl App {
         }
     }
 
-    #[cfg(not(feature = "ui_egui_with_file"))]
+    #[cfg(target_arch = "wasm32")]
     fn open(&mut self) {}
 
-    #[cfg(feature = "ui_egui_with_file")]
-    fn save(&mut self) {
+    /// Pass `true` to `force_choose` for "save as"
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save(&mut self, force_choose: bool) {
         let try_save_file: Result<PhysPlotterFile, _> = self.clone().try_into();
         match try_save_file {
             Ok(save_file) => {
-                if self.file_path.is_empty() {
+                if self.file_path.is_empty() || force_choose {
+                    // This dialog does overwrite confirmation for us
                     if let Some(path) = rfd::FileDialog::new()
                         .add_filter("Physics Plotter File", &["pyp"])
                         .save_file()
@@ -485,6 +453,56 @@ impl App {
             Err(error) => {
                 self.error = Some(format!("{}", error));
             }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn save(&mut self, _force_choose: bool) {
+        let try_save_file: Result<PhysPlotterFile, _> = self.clone().try_into();
+        match try_save_file {
+            Ok(save_file) => match save_file.try_into() {
+                Ok::<String, _>(serialized) => {
+                    if redirect_to_data_uri("application/json", &serialized, "project.pyp")
+                        .is_some()
+                    {
+                        self.saved = true;
+                    } else {
+                        self.error = Some(String::from("Cannot download"));
+                    }
+                }
+                Err(error) => {
+                    self.error = Some(format!("{}", error));
+                }
+            },
+            Err(error) => {
+                self.error = Some(format!("{}", error));
+            }
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_svg_output(&mut self, svg: &str) {
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("Scalable Vector Graphics", &["svg"])
+            .save_file()
+        {
+            match File::create(path) {
+                Ok(mut file) => {
+                    if let Err(error) = file.write_all(svg.as_bytes()) {
+                        self.error = Some(format!("Error while saving file: {}", error));
+                    }
+                }
+                Err(error) => {
+                    self.error = Some(format!("Error while saving file: {}", error));
+                }
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn save_svg_output(&mut self, svg: &str) {
+        if redirect_to_data_uri("image/svg+xml", svg, "graph.svg").is_none() {
+            self.error = Some(String::from("Cannot download"));
         }
     }
 
@@ -534,7 +552,18 @@ impl App {
                 }
             }
             Backends::Plotters => {
-                self.error = Some(String::from("Not supported yet."));
+                let mut svg_out = String::new();
+                if let Err(error) = plot::plotters(
+                    &self.title,
+                    &self.x_label,
+                    &self.y_label,
+                    &dataset,
+                    SVGBackend::with_string(&mut svg_out, (960, 540)),
+                ) {
+                    self.error = Some(format!("Error while generating: {}", error));
+                } else {
+                    self.save_svg_output(&svg_out);
+                }
             }
         };
     }
@@ -557,4 +586,31 @@ impl TryInto<PhysPlotterFile> for App {
             dataset: self.dataset.clone(),
         })
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn redirect_to_data_uri(mime: &str, data: &str, filename: &str) -> Option<()> {
+    let uri = format!("data:{},{}", mime, data);
+    let window = web_sys::window()?;
+    let document = window.document()?;
+    let body = document.body()?;
+    let anchor = document.create_element("a").ok()?;
+    anchor.set_text_content(Some("Click to download"));
+    anchor.set_id("download_anchor");
+    anchor.set_attribute("href", &uri).ok()?;
+    anchor
+        .set_attribute(
+            "style",
+            "font-size:10em; font-famity: sans-serif; position:absolute; background-color: white;",
+        )
+        .ok()?;
+    anchor
+        .set_attribute(
+            "onclick",
+            "document.body.removeChild(document.getElementById('download_anchor'))",
+        )
+        .ok()?;
+    anchor.set_attribute("download", filename).ok()?;
+    body.append_child(&anchor).ok()?;
+    Some(())
 }

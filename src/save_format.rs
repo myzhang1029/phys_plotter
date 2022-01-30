@@ -36,6 +36,13 @@ pub struct PhysPlotterFile {
     pub dataset: String,
 }
 
+impl TryInto<String> for PhysPlotterFile {
+    type Error = serde_json::Error;
+    fn try_into(self) -> serde_json::Result<String> {
+        serde_json::to_string(&self)
+    }
+}
+
 impl PhysPlotterFile {
     /// Save this file
     pub fn save_to(&self, filename: &str) -> std::io::Result<()> {

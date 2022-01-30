@@ -1825,7 +1825,7 @@ dependencies = [
 
 [[package]]
 name = "phys_plotter"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "clap",
  "eframe",
@@ -1838,6 +1838,7 @@ dependencies = [
  "rfd",
  "serde",
  "serde_json",
+ "web-sys",
 ]
 
 [[package]]

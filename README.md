@@ -29,9 +29,9 @@ Optional:
 3. Click "Plot".
 
 ## Building
-- To build everything, run `cargo build --release --features=ui_gtk,ui_egui_with_file`.
+- To build everything, run `cargo build --release --features=ui_gtk,ui_egui`.
 - To build only the GTK GUI, run `cargo build --release --bin phys_plotter_gtk --features=ui_gtk`.
-- To build only the egui GUI, run `cargo build --release --bin phys_plotter_egui --features=ui_egui_with_file`.
+- To build only the egui GUI, run `cargo build --release --bin phys_plotter_egui --features=ui_egui`.
 - To build only the CLI, run `cargo build --release --bin phys_plotter`.
 - To create a macOS app or other installers, run `cargo bundle --release --bin phys_plotter_gui`.
 

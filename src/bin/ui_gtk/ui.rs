@@ -25,9 +25,12 @@ use glib::clone;
 use gtk::prelude::*;
 use gtk::Orientation::{Horizontal, Vertical};
 use gtk::{
-    Box, ButtonsType, EntryBuilder, HeaderBarBuilder, IconSize, Image, Label, MessageDialog,
-    MessageDialogBuilder, Paned, ResponseType, ScrolledWindowBuilder, Separator, TextViewBuilder,
-    ToolButtonBuilder, ToolItem, Toolbar,
+    builders::{
+        EntryBuilder, HeaderBarBuilder, MessageDialogBuilder, ScrolledWindowBuilder,
+        TextViewBuilder, ToolButtonBuilder,
+    },
+    Box, ButtonsType, IconSize, Image, Label, MessageDialog, Paned, ResponseType, Separator,
+    ToolItem, Toolbar,
 };
 use phys_plotter::default_values as defv;
 use std::cell::RefCell;
@@ -126,21 +129,6 @@ macro_rules! unsave {
         }
     }};
 }
-macro_rules! unsave_entry {
-    ($item: expr, $state: ident) => {
-        $item.connect_changed(clone!(@strong $state => move |_| unsave!($state)));
-    };
-}
-macro_rules! unsave_text {
-    ($item: expr, $state: ident) => {
-        $item.connect_preedit_changed(clone!(@strong $state => move |_,_| unsave!($state)));
-        $item.connect_backspace(clone!(@strong $state => move |_| unsave!($state)));
-        $item.connect_cut_clipboard(clone!(@strong $state => move |_| unsave!($state)));
-        $item.connect_delete_from_cursor(clone!(@strong $state => move |_,_,_| unsave!($state)));
-        $item.connect_insert_at_cursor(clone!(@strong $state => move |_,_| unsave!($state)));
-        $item.connect_paste_clipboard(clone!(@strong $state => move |_| unsave!($state)));
-    };
-}
 
 /// Draw the properties area, on the left of the editing area
 fn draw_properties_area(state: &Rc<RefCell<UiState>>) -> Box {
@@ -149,19 +137,19 @@ fn draw_properties_area(state: &Rc<RefCell<UiState>>) -> Box {
     let properties_area_title = HeaderBarBuilder::new().title("Properties").build();
     let title_label = Label::new(Some("Plot title"));
     let title_input = text_input!(&state_borrowed.title, defv::TITLE);
-    unsave_entry!(title_input, state);
+    title_input.connect_changed(clone!(@strong state => move |_| unsave!(state)));
     let xlabel_label = Label::new(Some("X axis label"));
     let xlabel_input = text_input!(&state_borrowed.x_label, defv::X_LABEL);
-    unsave_entry!(xlabel_input, state);
+    xlabel_input.connect_changed(clone!(@strong state => move |_| unsave!(state)));
     let ylabel_label = Label::new(Some("Y axis label"));
     let ylabel_input = text_input!(&state_borrowed.y_label, defv::Y_LABEL);
-    unsave_entry!(ylabel_input, state);
+    ylabel_input.connect_changed(clone!(@strong state => move |_| unsave!(state)));
     let ux_label = Label::new(Some("Default x uncertainty"));
     let ux_input = text_input!(&state_borrowed.default_x_uncertainty, defv::X_UNCERTAINTY);
-    unsave_entry!(ux_input, state);
+    ux_input.connect_changed(clone!(@strong state => move |_| unsave!(state)));
     let uy_label = Label::new(Some("Default y uncertainty"));
     let uy_input = text_input!(&state_borrowed.default_y_uncertainty, defv::Y_UNCERTAINTY);
-    unsave_entry!(uy_input, state);
+    uy_input.connect_changed(clone!(@strong state => move |_| unsave!(state)));
     properties_area.add(&properties_area_title);
     properties_area.add(&title_label);
     properties_area.add(&title_input);
@@ -186,7 +174,12 @@ fn draw_editing_area(state: &Rc<RefCell<UiState>>) -> Paned {
     let text_area_view = TextViewBuilder::new()
         .buffer(&state.borrow().dataset)
         .build();
-    unsave_text!(text_area_view, state);
+    text_area_view.connect_preedit_changed(clone!(@strong state => move |_,_| unsave!(state)));
+    text_area_view.connect_backspace(clone!(@strong state => move |_| unsave!(state)));
+    text_area_view.connect_cut_clipboard(clone!(@strong state => move |_| unsave!(state)));
+    text_area_view.connect_delete_from_cursor(clone!(@strong state => move |_,_,_| unsave!(state)));
+    text_area_view.connect_insert_at_cursor(clone!(@strong state => move |_,_| unsave!(state)));
+    text_area_view.connect_paste_clipboard(clone!(@strong state => move |_| unsave!(state)));
     let text_area_text = ScrolledWindowBuilder::new()
         .child(&text_area_view)
         // Have a border around
@@ -315,7 +308,7 @@ where
     file_chooser.connect_response(clone!(@weak window => move |file_chooser, response| {
         if response == gtk::ResponseType::Ok {
             let filename = unwrap_option_or_error_return!(
-                file_chooser.get_filename(),
+                file_chooser.filename(),
                 &window,
                 "Couldn't get filename",
                 {file_chooser.close()}

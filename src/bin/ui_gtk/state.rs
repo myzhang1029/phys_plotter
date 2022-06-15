@@ -19,7 +19,7 @@
 
 use clap::crate_version;
 use gtk::prelude::*;
-use gtk::{EntryBuffer, TextBuffer, TextBufferBuilder};
+use gtk::{builders::TextBufferBuilder, EntryBuffer, TextBuffer};
 use phys_plotter::default_values as defv;
 use phys_plotter::plot::{Backends, BackendsFromStrError};
 use phys_plotter::save_format::PhysPlotterFile;
@@ -58,9 +58,9 @@ impl UiState {
 
     /// Get the value of the dataset
     pub fn dataset_str(&self) -> String {
-        let range = self.dataset.get_bounds();
+        let range = self.dataset.bounds();
         self.dataset
-            .get_text(&range.0, &range.1, true)
+            .text(&range.0, &range.1, true)
             .unwrap_or_else(|| glib::GString::from(""))
             .to_string()
     }
@@ -81,16 +81,16 @@ impl UiState {
     /// Safely replace this state, ensures that the views are updated
     pub fn replace(&mut self, other: UiState) {
         self.saved = other.saved;
-        self.title.set_text(&other.title.get_text());
+        self.title.set_text(&other.title.text());
         self.dataset.set_text(&other.dataset_str());
         self.file_path = other.file_path;
         self.backend = other.backend;
-        self.x_label.set_text(&other.x_label.get_text());
-        self.y_label.set_text(&other.y_label.get_text());
+        self.x_label.set_text(&other.x_label.text());
+        self.y_label.set_text(&other.y_label.text());
         self.default_x_uncertainty
-            .set_text(&other.default_x_uncertainty.get_text());
+            .set_text(&other.default_x_uncertainty.text());
         self.default_y_uncertainty
-            .set_text(&other.default_y_uncertainty.get_text());
+            .set_text(&other.default_y_uncertainty.text());
     }
 }
 
@@ -101,12 +101,12 @@ impl TryInto<PhysPlotterFile> for UiState {
         Ok(PhysPlotterFile {
             creator: defv::APP_ID.to_string(),
             version: crate_version!().to_string(),
-            title: self.title.get_text(),
+            title: self.title.text(),
             backend_name: format!("{}", self.backend),
-            x_label: self.x_label.get_text(),
-            y_label: self.y_label.get_text(),
-            default_x_uncertainty: self.default_x_uncertainty.get_text().parse()?,
-            default_y_uncertainty: self.default_x_uncertainty.get_text().parse()?,
+            x_label: self.x_label.text(),
+            y_label: self.y_label.text(),
+            default_x_uncertainty: self.default_x_uncertainty.text().parse()?,
+            default_y_uncertainty: self.default_x_uncertainty.text().parse()?,
             dataset: self.dataset_str(),
         })
     }

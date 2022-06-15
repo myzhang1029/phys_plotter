@@ -26,7 +26,8 @@ use glib::clone;
 use gtk::prelude::*;
 use gtk::License::Gpl30;
 use gtk::{
-    AboutDialogBuilder, Button, DialogBuilder, DrawingArea, Orientation, RadioButton, ResponseType,
+    builders::{AboutDialogBuilder, DialogBuilder},
+    Button, DrawingArea, Orientation, RadioButton, ResponseType,
 };
 use phys_plotter::data::TwoVarDataSet;
 use phys_plotter::default_values as defv;
@@ -111,7 +112,7 @@ fn change_backend(
 
 macro_rules! parse_state_float_or_return {
     ($var: expr) => {
-        $var.get_text().parse()?
+        $var.text().parse()?
     };
 }
 
@@ -197,10 +198,10 @@ fn do_generate_plot(
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Get the range of the dataset text
     let state_local = state.borrow();
-    let range = state_local.dataset.get_bounds();
+    let range = state_local.dataset.bounds();
     let dataset_text = state_local
         .dataset
-        .get_text(&range.0, &range.1, true)
+        .text(&range.0, &range.1, true)
         .unwrap_or_else(|| glib::GString::from(""));
     // Construct dataset from the input
     let dataset = TwoVarDataSet::from_string(
@@ -213,9 +214,9 @@ fn do_generate_plot(
         return Err(Box::new(PlotError::EmptyData));
     }
     // Extract information here first
-    let title = state_local.title.get_text();
-    let x_label = state_local.x_label.get_text();
-    let y_label = state_local.y_label.get_text();
+    let title = state_local.title.text();
+    let x_label = state_local.x_label.text();
+    let y_label = state_local.y_label.text();
     // Call plotting backend
     match state_local.backend {
         Backends::Gnuplot => plot::gnuplot(&title, &x_label, &y_label, &dataset, None)?,
@@ -369,7 +370,7 @@ fn do_open_file(window: &gtk::ApplicationWindow, state: &Rc<RefCell<UiState>>) {
         clone!(@weak window, @strong state => move |file_chooser, response| {
             if response == gtk::ResponseType::Ok {
                 let filename = unwrap_option_or_error_return!(
-                    file_chooser.get_filename(),
+                    file_chooser.filename(),
                     &window,
                     "Couldn't get filename",
                     {file_chooser.close()}

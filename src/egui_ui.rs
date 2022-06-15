@@ -4,13 +4,10 @@ use super::plot;
 use super::plot::Backends;
 use super::save_format::PhysPlotterFile;
 use clap::crate_version;
-use eframe::{
-    egui::{
-        self,
-        plot::{Legend, Line, LineStyle, MarkerShape, Plot, Points, Value, Values},
-        Color32,
-    },
-    epi,
+use eframe::egui::{
+    self,
+    plot::{Legend, Line, LineStyle, MarkerShape, Plot, Points, Value, Values},
+    Color32,
 };
 #[cfg(target_arch = "wasm32")]
 use futures::executor::block_on;
@@ -68,27 +65,12 @@ impl Default for App {
     }
 }
 
-impl epi::App for App {
-    fn name(&self) -> &str {
-        "Physics Plotter"
+impl eframe::App for App {
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        eframe::set_value(storage, eframe::APP_KEY, self);
     }
 
-    fn setup(
-        &mut self,
-        _ctx: &egui::CtxRef,
-        _frame: &epi::Frame,
-        storage: Option<&dyn epi::Storage>,
-    ) {
-        if let Some(storage) = storage {
-            *self = epi::get_value(storage, epi::APP_KEY).unwrap_or_default();
-        }
-    }
-
-    fn save(&mut self, storage: &mut dyn epi::Storage) {
-        epi::set_value(storage, epi::APP_KEY, self);
-    }
-
-    fn update(&mut self, ctx: &egui::CtxRef, _frame: &epi::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.draw_top_menu(ctx);
         self.draw_side_panel(ctx);
         self.draw_preview_area(ctx);
@@ -100,7 +82,15 @@ impl epi::App for App {
 }
 
 impl App {
-    fn draw_top_menu(&mut self, ctx: &egui::CtxRef) {
+    /// Create an app instance
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        if let Some(storage) = cc.storage {
+            return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
+        }
+        Default::default()
+    }
+
+    fn draw_top_menu(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::top("open_menu").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 if ui.button("New").clicked() {
@@ -133,7 +123,7 @@ impl App {
         });
     }
 
-    fn draw_side_panel(&mut self, ctx: &egui::CtxRef) {
+    fn draw_side_panel(&mut self, ctx: &egui::Context) {
         let Self {
             saved,
             title,
@@ -203,7 +193,7 @@ impl App {
         });
     }
 
-    fn draw_preview_area(&mut self, ctx: &egui::CtxRef) {
+    fn draw_preview_area(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.heading("Preview");
@@ -297,7 +287,7 @@ impl App {
         });
     }
 
-    fn draw_confirm_window(&mut self, ctx: &egui::CtxRef) {
+    fn draw_confirm_window(&mut self, ctx: &egui::Context) {
         macro_rules! create_save_confirm_window {
             ($action: block, $var: expr) => {
                 if $var {
@@ -321,7 +311,7 @@ impl App {
         create_save_confirm_window! {{self.open();}, self.show_confirm_then_open}
     }
 
-    fn draw_error_window(&mut self, ctx: &egui::CtxRef) {
+    fn draw_error_window(&mut self, ctx: &egui::Context) {
         let Self { error, .. } = self;
         if let Some(error_desc) = error {
             let error_desc = error_desc.clone();
@@ -334,7 +324,7 @@ impl App {
         }
     }
 
-    fn draw_about_window(&mut self, ctx: &egui::CtxRef) {
+    fn draw_about_window(&mut self, ctx: &egui::Context) {
         if self.show_about {
             egui::Window::new("About").show(ctx, |ui| {
                 ui.horizontal(|ui| {

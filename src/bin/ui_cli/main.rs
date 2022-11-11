@@ -1,5 +1,5 @@
 //
-//  Copyright (C) 2021 Zhang Maiyun <myzhang1029@hotmail.com>
+//  Copyright (C) 2021 Zhang Maiyun <me@myzhangll.xyz>
 //
 //  This file is part of physics plotter.
 //
@@ -44,7 +44,7 @@ fn size_validator(num: &str) -> Result<(), String> {
 fn main() {
     let matches = App::new("Physics Plotter")
         .version(crate_version!())
-        .author("Zhang Maiyun <myzhang1029@hotmail.com>")
+        .author("Zhang Maiyun <me@myzhangll.xyz>")
         .about("Plot physics two-variable observation data with best-fit lines, max,min-gradient lines, and error bars.")
         .arg(Arg::new("DATASET_FILE")
             .help("Sets the data file to parse")

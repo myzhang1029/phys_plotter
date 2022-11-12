@@ -351,7 +351,7 @@ fn atof(string: &str) -> Option<(f64, (usize, usize))> {
     // Go over every character
     for (idx, chr) in string.chars().enumerate() {
         // Found a digit
-        if chr.is_digit(10) {
+        if chr.is_ascii_digit() {
             if startpoint == None {
                 // Set processing start point
                 startpoint = if idx != 0 && Some('-') == string.chars().nth(idx - 1) {

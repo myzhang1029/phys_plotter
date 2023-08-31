@@ -1,4 +1,7 @@
 # Physics Plotter
+
+***Archived: I am no longer willing to update the codebase to work with newer packages.***
+
 Originally created to plot physics two-variable observation data with best-fit lines, max,min-gradient lines, and error bars.
 But you can plot any such dataset as you like.
 
